@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <llvm/IR/Value.h>
-#include "NodePrecedence.h"
+#include "NodePredeclaration.h"
 
 class CodeGenContext;
 

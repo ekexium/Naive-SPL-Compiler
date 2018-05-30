@@ -132,16 +132,28 @@ expression : expression  GE  expr
             |  expression  GT  expr  
             |  expression  LE  expr
             |  expression  LT  expr 
-            |  expression  EQUAL  expr  
-            |  expression  UNEQUAL  expr  
+            |  expression  EQ  expr  
+            |  expression  NE  expr  
             |  expr
-expr : expr  PLUS  term  |  expr  MINUS  term  |  expr  OR  term  |  term
-term : term  MUL  factor  |  term  DIV  factor  |  term  MOD  factor 
- |  term  AND  factor  |  factor
-factor : NAME  |  NAME  LP  args_list  RP  |  SYS_FUNCT |
-SYS_FUNCT  LP  args_list  RP  |  const_value  |  LP  expression  RP
-|  NOT  factor  |  MINUS  factor  |  ID  LB  expression  RB
-|  ID  DOT  ID
+expr : expr  PLUS  term  
+      |  expr  MINUS  term  
+      |  expr  OR  term  
+      |  term
+term : term  MUL  factor  
+      |  term  DIV  factor  
+      |  term  MOD  factor 
+      |  term  AND  factor    
+      |  factor
+factor : NAME  
+      |  NAME  LP  args_list  RP  
+      |  SYS_FUNCT 
+      |  SYS_FUNCT  LP  args_list  RP  
+      |  const_value  
+      |  LP  expression  RP
+      |  NOT  factor    
+      |  MINUS  factor  
+      |  ID  LB  expression  RB
+      |  ID  DOT  ID
 args_list : args_list  COMMA  expression  |  expression
 
 %%
