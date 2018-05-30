@@ -43,63 +43,92 @@
 %type  comparison
 
 /* Operator precedence for mathematical operators */
-%left TPLUS TMINUS
-%left TMUL TDIV
+%left PLUS MINUS
+%left MUL DIV
 
 %start program
 
 %%
 
-program : stmts { programBlock = $1; }
-        ;
+empty :
+program : program_head  routine  DOT
+program_head : PROGRAM  ID  SEMI
+routine : routine_head  routine_body
+sub_routine : routine_head  routine_body
 
-stmts : stmt { $$ = new NBlock(); $$->statements.push_back($1); }
-      | stmts stmt { $1->statements.push_back($2); }
-      ;
+routine_head : label_part  const_part  type_part  var_part  routine_part
+label_part : empty
+const_part : CONST  const_expr_list  |  empty
+const_expr_list : const_expr_list  NAME  EQUAL  const_value  SEMI
+|  NAME  EQUAL  const_value  SEMI
+const_value : INTEGER  |  REAL  |  CHAR  |  STRING  |  SYS_CON
+type_part : TYPE type_decl_list  |  empty
+type_decl_list : type_decl_list  type_definition  |  type_definition
+type_definition : NAME  EQUAL  type_decl  SEMI
+type_decl : simple_type_decl  |  array_type_decl  |  record_type_decl
+simple_type_decl : SYS_TYPE  |  NAME  |  LP  name_list  RP  
+                |  const_value  DOTDOT  const_value  
+                |  MINUS  const_value  DOTDOT  const_value
+                |  MINUS  const_value  DOTDOT  MINUS  const_value
+                |  NAME  DOTDOT  NAME
+array_type_decl : ARRAY  LB  simple_type_decl  RB  OF  type_decl
+record_type_decl : RECORD  field_decl_list  END
+field_decl_list : field_decl_list  field_decl  |  field_decl
+field_decl : name_list  COLON  type_decl  SEMI
+name_list : name_list  COMMA  ID  |  ID
+var_part : VAR  var_decl_list  |  empty
+var_decl_list :  var_decl_list  var_decl  |  var_decl
+var_decl :  name_list  COLON  type_decl  SEMI
 
-stmt : var_decl | func_decl
-     | expr { $$ = new NExpressionStatement(*$1); }
-     ;
+routine_part:  routine_part  function_decl  |  routine_part  procedure_decl
+           |  function_decl  |  procedure_decl  | empty
+function_decl : function_head  SEMI  sub_routine  SEMI
+function_head :  FUNCTION  NAME  parameters  COLON  simple_type_decl 
+procedure_decl :  procedure_head  SEMI  sub_routine  SEMI
+procedure_head :  PROCEDURE NAME parameters 
+parameters : LP  para_decl_list  RP  |  empty
+para_decl_list : para_decl_list  SEMI  para_type_list | para_type_list
+para_type_list : var_para_list COLON  simple_type_decl  
+|  val_para_list  COLON  simple_type_decl
+var_para_list : VAR  name_list
+val_para_list : name_list
 
-block : TLBRACE stmts TRBRACE { $$ = $2; }
-      | TLBRACE TRBRACE { $$ = new NBlock(); }
-      ;
-
-var_decl : ident ident { $$ = new NVariableDeclaration(*$1, *$2); }
-         | ident ident TEQUAL expr { $$ = new NVariableDeclaration(*$1, *$2, $4); }
-         ;
-
-func_decl : ident ident TLPAREN func_decl_args TRPAREN block
-            { $$ = new NFunctionDeclaration(*$1, *$2, *$4, *$6); delete $4; }
-          ;
-
-func_decl_args : /*blank*/  { $$ = new VariableList(); }
-          | var_decl { $$ = new VariableList(); $$->push_back($1); }
-          | func_decl_args TCOMMA var_decl { $1->push_back($3); }
-          ;
-
-ident : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; }
-      ;
-
-numeric : TINTEGER { $$ = new NInteger(atol($1->c_str())); delete $1; }
-        | TDOUBLE { $$ = new NDouble(atof($1->c_str())); delete $1; }
-        ;
-
-expr : ident TEQUAL expr { $$ = new NAssignment(*$1, *$3); }
-     | ident TLPAREN call_args TRPAREN { $$ = new NMethodCall(*$1, *$3); delete $3; }
-     | ident { $$ = $1; }
-     | numeric
-     | expr comparison expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
-     | TLPAREN expr TRPAREN { $$ = $2; }
-     ;
-
-call_args : /*blank*/  { $$ = new ExpressionList(); }
-          | expr { $$ = new ExpressionList(); $$->push_back($1); }
-          | call_args TCOMMA expr  { $1->push_back($3); }
-          ;
-
-comparison : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE
-           | TPLUS | TMINUS | TMUL | TDIV
-           ;
+routine_body : compound_stmt
+compound_stmt : BEGIN  stmt_list  END
+stmt_list : stmt_list  stmt  SEMI  |  empty
+stmt : INTEGER  COLON  non_label_stmt  |  non_label_stmt
+non_label_stmt : assign_stmt | proc_stmt | compound_stmt | if_stmt | repeat_stmt | while_stmt 
+| for_stmt | case_stmt | goto_stmt
+assign_stmt : ID  ASSIGN  expression
+           | ID LB expression RB ASSIGN expression
+           | ID  DOT  ID  ASSIGN  expression
+proc_stmt : ID
+          |  ID  LP  args_list  RP
+          |  SYS_PROC
+          |  SYS_PROC  LP  expression_list  RP
+          |  READ  LP  factor  RP
+if_stmt : IF  expression  THEN  stmt  else_clause
+else_clause : ELSE stmt |  empty
+repeat_stmt : REPEAT  stmt_list  UNTIL  expression
+while_stmt : WHILE  expression  DO stmt
+for_stmt : FOR  ID  ASSIGN  expression  direction  expression  DO stmt
+direction : TO | DOWNTO
+case_stmt : CASE expression OF case_expr_list  END
+case_expr_list : case_expr_list  case_expr  |  case_expr
+case_expr : const_value  COLON  stmt  SEMI
+          |  ID  COLON  stmt  SEMI
+goto_stmt : GOTO  INTEGER
+expression_list : expression_list  COMMA  expression  |  expression
+expression : expression  GE  expr  |  expression  GT  expr  |  expression  LE  expr
+          |  expression  LT  expr  |  expression  EQUAL  expr  
+|  expression  UNEQUAL  expr  |  expr
+expr : expr  PLUS  term  |  expr  MINUS  term  |  expr  OR  term  |  term
+term : term  MUL  factor  |  term  DIV  factor  |  term  MOD  factor 
+ |  term  AND  factor  |  factor
+factor : NAME  |  NAME  LP  args_list  RP  |  SYS_FUNCT |
+SYS_FUNCT  LP  args_list  RP  |  const_value  |  LP  expression  RP
+|  NOT  factor  |  MINUS  factor  |  ID  LB  expression  RB
+|  ID  DOT  ID
+args_list : args_list  COMMA  expression  |  expression
 
 %%
