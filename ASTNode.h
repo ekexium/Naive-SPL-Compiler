@@ -28,13 +28,12 @@ class AbstractStatement : public Node {
 class Program : public AbstractStatement {
 public:
 
-	ProgramHead *programHead;
-	Routine *routine;
+	ProgramHead *programHead{};
+	Routine *routine{};
 };
 
 class ProgramHead : public AbstractStatement {
 public:
-
 	std::string id;
 };
 
@@ -42,21 +41,21 @@ public:
 class Routine : public AbstractStatement {
 public:
 
-	RoutineHead *routineHead;
-	RoutineBody *routineBody;
+	RoutineHead *routineHead{};
+	RoutineBody *routineBody{};
 };
 
 class SubRoutine : public AbstractStatement {
 public:
 
-	RoutineHead *routineHead;
-	RoutineBody *routineBody;
+	RoutineHead *routineHead{};
+	RoutineBody *routineBody{};
 };
 
 class RoutineHead : public AbstractStatement {
 public:
 
-	LabelPart *labelPart;
+	LabelPart *labelPart{};
 
 };
 
@@ -69,13 +68,13 @@ public:
 class ConstPart : public AbstractStatement {
 public:
 
-	ConstExprList *constExprList;
+	ConstExprList *constExprList{};
 };
 
 class ConstExprList : public AbstractStatement {
 public:
-	ConstExprList *preList;
-	ConstValue *value;
+	ConstExprList *preList{};
+	ConstValue *value{};
 };
 
 class ConstValue : public AbstractExpression {
@@ -88,25 +87,25 @@ public:
 	static const int STRING = 5;
 
 	std::string value;
-	int type;
+	int type{};
 
 	ConstValue(std::string &value, int type) : value(value), type(type) {}
 };
 
 class TypePart : public AbstractStatement {
 public:
-	TypeDeclList *typeDeclList;
+	TypeDeclList *typeDeclList{};
 };
 
 class TypeDeclList : public AbstractStatement {
 public:
-	TypeDeclList *preList;
-	TypeDefinition *typeDefinition;
+	TypeDeclList *preList{};
+	TypeDefinition *typeDefinition{};
 };
 
 class TypeDefinition : public AbstractStatement {
 public:
-	TypeDecl *typeDecl;
+	TypeDecl *typeDecl{};
 };
 
 class TypeDecl : public AbstractStatement {
@@ -115,10 +114,10 @@ public:
 	static const int ARRAY_TYPE_DECLARE = 2;
 	static const int RECORD_TYPE_DECLARE = 3;
 
-	int type;
-	SimpleTypeDecl *simpleTypeDecl;
-	ArrayTypeDecl *arrayTypeDecl;
-	RecordTypeDecl *recordTypeDecl;
+	int type{};
+	SimpleTypeDecl *simpleTypeDecl{};
+	ArrayTypeDecl *arrayTypeDecl{};
+	RecordTypeDecl *recordTypeDecl{};
 };
 
 class SimpleTypeDecl : public AbstractStatement {
@@ -128,7 +127,7 @@ public:
 	static const int ENUMERATION = 3;
 	static const int SUBRAGE = 4;
 
-	int type;
+	int type{};
 	std::string sysType;
 	std::string name;
 	//todo: manually handle negative signs?
@@ -138,25 +137,25 @@ public:
 
 class ArrayTypeDecl : public AbstractStatement {
 public:
-	SimpleTypeDecl *range;
-	TypeDecl *elementType;
+	SimpleTypeDecl *range{};
+	TypeDecl *elementType{};
 };
 
 class RecordTypeDecl : public AbstractStatement {
 public:
-	FieldDeclList *fieldDeclList;
+	FieldDeclList *fieldDeclList{};
 };
 
 class FieldDeclList : public AbstractStatement {
 public:
-	FieldDeclList *preList;
-	FieldDecl *fieldDecl;
+	FieldDeclList *preList{};
+	FieldDecl *fieldDecl{};
 };
 
 class FieldDecl : public AbstractStatement {
 public:
-	NameList *nameList;
-	TypeDecl *typeDecl;
+	NameList *nameList{};
+	TypeDecl *typeDecl{};
 };
 
 class NameList : public AbstractStatement {
@@ -167,19 +166,19 @@ public:
 
 class VarPart : public AbstractStatement {
 public:
-	VarDeclList *varDeclList;
+	VarDeclList *varDeclList{};
 };
 
 class VarDeclList : public AbstractStatement {
 public:
-	VarDeclList *preList;
-	VarDecl *varDecl;
+	VarDeclList *preList{};
+	VarDecl *varDecl{};
 };
 
 class VarDecl : public AbstractStatement {
 public:
-	NameList *nameList;
-	TypeDecl *typeDecl;
+	NameList *nameList{};
+	TypeDecl *typeDecl{};
 };
 
 class RoutinePart : public AbstractStatement {
@@ -191,29 +190,29 @@ public:
 	static const int PROC = 4;
 	static const int EMPTY = 5;
 
-	int type;
-	RoutinePart *routinePart;
-	FunctionDecl *functionDecl;
-	ProcedureDecl *procedureDecl;
+	int type{};
+	RoutinePart *routinePart{};
+	FunctionDecl *functionDecl{};
+	ProcedureDecl *procedureDecl{};
 };
 
 class FunctionDecl : public AbstractStatement {
 public:
-	FunctionHead *functionHead;
-	SubRoutine *subRoutine;
+	FunctionHead *functionHead{};
+	SubRoutine *subRoutine{};
 };
 
 class FunctionHead : public AbstractStatement {
 public:
 	std::string name;
-	Parameters *parameters;
-	SimpleTypeDecl *returnType;
+	Parameters *parameters{};
+	SimpleTypeDecl *returnType{};
 };
 
 class ProcedureDecl : public AbstractStatement {
 public:
-	ProcedureHead *procedureHead;
-	SubRoutine *subRoutine;
+	ProcedureHead *procedureHead{};
+	SubRoutine *subRoutine{};
 };
 
 class ProcedureHead : public AbstractStatement {
@@ -224,13 +223,13 @@ public:
 
 class Parameters : public AbstractStatement {
 public:
-	ParaDeclList *paraDeclList;
+	ParaDeclList *paraDeclList{};
 };
 
 class ParaDeclList : public AbstractStatement {
 public:
-	ParaDeclList *paraDeclList;
-	ParaTypeList *paraTypeList;
+	ParaDeclList *paraDeclList{};
+	ParaTypeList *paraTypeList{};
 };
 
 class ParaTypeList : public AbstractStatement {
@@ -238,36 +237,36 @@ public:
 	static const int VAR = 1;
 	static const int VAL = 2;
 
-	int type;
-	VarParaList *varParaList;
-	ValParaList *valParaList;
-	SimpleTypeDecl *typeDecl;
+	int type{};
+	VarParaList *varParaList{};
+	ValParaList *valParaList{};
+	SimpleTypeDecl *typeDecl{};
 };
 
 class VarParaList : public AbstractStatement {
 public:
-	NameList *nameList;
+	NameList *nameList{};
 };
 
 class ValParaList : public AbstractStatement {
 public:
-	NameList *nameList;
+	NameList *nameList{};
 };
 
 class RoutineBody : public AbstractStatement {
 public:
-	CompoundStmt *compoundStmt;
+	CompoundStmt *compoundStmt{};
 };
 
 class CompoundStmt : public AbstractStatement {
 public:
-	StmtList *stmtList;
+	StmtList *stmtList{};
 };
 
 class StmtList : public AbstractStatement {
 public:
-	StmtList *preList;
-	Stmt *stmt;
+	StmtList *preList{};
+	Stmt *stmt{};
 };
 
 class Stmt : public AbstractStatement {
@@ -275,8 +274,8 @@ public:
 	static const int LABELED = 1;
 	static const int UNLABELED = 2;
 
-	int type;
-	NonLabelStmt *nonLabelStmt;
+	int type{};
+	NonLabelStmt *nonLabelStmt{};
 };
 
 class NonLabelStmt : public AbstractStatement {
@@ -290,15 +289,15 @@ public:
 	static const int CASE = 7;
 	static const int GOTO = 8;
 
-	int type;
-	AssignStmt *assignStmt;
-	ProcStmt *procStmt;
-	IfStmt *ifStmt;
-	RepeatStmt *repeatStmt;
-	WhileStmt *whileStmt;
-	ForStmt *forStmt;
-	CaseStmt *caseStmt;
-	GotoStmt *gotoStmt;
+	int type{};
+	AssignStmt *assignStmt{};
+	ProcStmt *procStmt{};
+	IfStmt *ifStmt{};
+	RepeatStmt *repeatStmt{};
+	WhileStmt *whileStmt{};
+	ForStmt *forStmt{};
+	CaseStmt *caseStmt{};
+	GotoStmt *gotoStmt{};
 };
 
 class AssignStmt : public AbstractStatement {
@@ -321,38 +320,38 @@ public:
 	//fixme: what's read ??
 	static const int READ = 5;
 
-	int type;
+	int type{};
 	std::string procId;
-	ArgsList *argsList;
+	ArgsList *argsList{};
 	std::string sysProc;
-	ExpressionList *expressionList;
+	ExpressionList *expressionList{};
 
 	//fixme: read(factor) ??
-	Factor *factor;
+	Factor *factor{};
 };
 
 class IfStmt : public AbstractStatement {
 public:
-	Expression *expression;
-	Stmt *stmt;
-	ElseClause *elseClause;
+	Expression *expression{};
+	Stmt *stmt{};
+	ElseClause *elseClause{};
 };
 
 class ElseClause : public AbstractStatement {
 public:
-	Stmt *stmt;
+	Stmt *stmt{};
 };
 
 class RepeatStmt : public AbstractStatement {
 public:
-	StmtList *stmtList;
-	Expression *untilCondition;
+	StmtList *stmtList{};
+	Expression *untilCondition{};
 };
 
 class WhileStmt : public AbstractStatement {
 public:
-	Expression *whileCondition;
-	Stmt *stmt;
+	Expression *whileCondition{};
+	Stmt *stmt{};
 };
 
 class ForStmt : public AbstractStatement {
@@ -368,18 +367,18 @@ class Direction : public AbstractStatement {
 public:
 	static const int TO = 1;
 	static const int DOWNTO = 2;
-	int type;
+	int type{};
 };
 
 class CaseStmt : public AbstractStatement {
 public:
-	Expression *expression;
-	CaseExprList *caseExprList;
+	Expression *expression{};
+	CaseExprList *caseExprList{};
 };
 
 class CaseExprList : public AbstractStatement {
 public:
-	CaseExprList *preList;
+	CaseExprList *preList{};
 	CaseExpr caseExpr;
 };
 
@@ -394,14 +393,14 @@ public:
 
 class GotoStmt : public AbstractStatement {
 public:
-	int addr;
+	int addr{};
 };
 
 // todo: expression or statement, does it matter?
 class ExpressionList : AbstractExpression {
 public:
-	ExpressionList *preList;
-	Expression *expression;
+	ExpressionList *preList{};
+	Expression *expression{};
 };
 
 class Expression : public AbstractExpression {
@@ -413,8 +412,8 @@ public:
 	static const int LE = 5;
 	static const int LT = 6;
 	static const int EXPR = 7;
-	Expression *expression;
-	Expr *expr;
+	Expression *expression{};
+	Expr *expr{};
 };
 
 class Expr : public AbstractExpression {
@@ -424,8 +423,8 @@ public:
 	static const int OR = 3;
 	static const int TERM = 4;
 
-	Expr *expr;
-	Term *term;
+	Expr *expr{};
+	Term *term{};
 };
 
 class Term : public AbstractExpression {
@@ -436,8 +435,8 @@ public:
 	static const int AND = 4;
 	static const int FACTOR = 5;
 
-	Term *term;
-	Factor *factor;
+	Term *term{};
+	Factor *factor{};
 };
 
 class Factor : public AbstractExpression {
@@ -453,21 +452,21 @@ public:
 	static const int ID_EXPR = 9;
 	static const int ID_DOT_ID = 10;
 
-	int type;
+	int type{};
 	std::string name;
-	ArgsList *argsList;
+	ArgsList *argsList{};
 	std::string sysFunction;
-	ConstValue *constValue;
-	Expression *expression;
-	Factor *factor;
+	ConstValue *constValue{};
+	Expression *expression{};
+	Factor *factor{};
 	std::string id;
 	std::string recordId;
 };
 
 class ArgsList : public AbstractStatement {
 public:
-	ArgsList *preList;
-	Expression *expression;
+	ArgsList *preList{};
+	Expression *expression{};
 };
 
 #endif //SPLC_NODE_H
