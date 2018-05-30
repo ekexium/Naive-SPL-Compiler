@@ -96,9 +96,17 @@ val_para_list : name_list
 routine_body : compound_stmt
 compound_stmt : BEGIN  stmt_list  END
 stmt_list : stmt_list  stmt  SEMI  |  empty
-stmt : INTEGER  COLON  non_label_stmt  |  non_label_stmt
-non_label_stmt : assign_stmt | proc_stmt | compound_stmt | if_stmt | repeat_stmt | while_stmt 
-| for_stmt | case_stmt | goto_stmt
+stmt : INTEGER  COLON  non_label_stmt  
+            | non_label_stmt
+non_label_stmt : assign_stmt 
+            | proc_stmt 
+            | compound_stmt 
+            | if_stmt 
+            | repeat_stmt 
+            | while_stmt 
+            | for_stmt 
+            | case_stmt 
+            | goto_stmt
 assign_stmt : ID  ASSIGN  expression
            | ID LB expression RB ASSIGN expression
            | ID  DOT  ID  ASSIGN  expression
@@ -114,14 +122,19 @@ while_stmt : WHILE  expression  DO stmt
 for_stmt : FOR  ID  ASSIGN  expression  direction  expression  DO stmt
 direction : TO | DOWNTO
 case_stmt : CASE expression OF case_expr_list  END
-case_expr_list : case_expr_list  case_expr  |  case_expr
+case_expr_list : case_expr_list  case_expr  
+            |  case_expr
 case_expr : const_value  COLON  stmt  SEMI
           |  ID  COLON  stmt  SEMI
 goto_stmt : GOTO  INTEGER
 expression_list : expression_list  COMMA  expression  |  expression
-expression : expression  GE  expr  |  expression  GT  expr  |  expression  LE  expr
-          |  expression  LT  expr  |  expression  EQUAL  expr  
-|  expression  UNEQUAL  expr  |  expr
+expression : expression  GE  expr  
+            |  expression  GT  expr  
+            |  expression  LE  expr
+            |  expression  LT  expr 
+            |  expression  EQUAL  expr  
+            |  expression  UNEQUAL  expr  
+            |  expr
 expr : expr  PLUS  term  |  expr  MINUS  term  |  expr  OR  term  |  term
 term : term  MUL  factor  |  term  DIV  factor  |  term  MOD  factor 
  |  term  AND  factor  |  factor
