@@ -1,5 +1,5 @@
 %{
-    #include "node.h"
+    #include "ASTNode.h"
     NBlock *programBlock; /* the top level root node of our final AST */
 
     extern int yylex();
@@ -80,8 +80,8 @@ var_part : VAR  var_decl_list  |  empty
 var_decl_list :  var_decl_list  var_decl  |  var_decl
 var_decl :  name_list  COLON  type_decl  SEMI
 
-routine_part:  routine_part  function_decl  |  routine_part  procedure_decl
-           |  function_decl  |  procedure_decl  | empty
+routine_part :  routine_part  function_decl  |  routine_part  procedure_decl 
+|  function_decl  |  procedure_decl  | empty
 function_decl : function_head  SEMI  sub_routine  SEMI
 function_head :  FUNCTION  NAME  parameters  COLON  simple_type_decl 
 procedure_decl :  procedure_head  SEMI  sub_routine  SEMI
