@@ -1,6 +1,6 @@
 %{
     #include "ASTNode.h"
-    NBlock *programBlock; /* the top level root node of our final AST */
+    ProgramHead *program_head;
 
     extern int yylex();
     void yyerror(const char *s) { printf("ERROR: %s/n", s); }
@@ -9,13 +9,45 @@
 /* Represents the many different ways we can access our data */
 %union {
     Node *node;
-    NBlock *block;
-    NExpression *expr;
-    NStatement *stmt;
-    NIdentifier *ident;
-    NVariableDeclaration *var_decl;
-    std::vector *varvec;
-    std::vector *exprvec;
+    /*
+    ProgramHead *programHead;
+    Routine *routine;
+    RoutineHead *routineHead;
+    SubRoutine *subRoutine;
+    LabelPart *labelPart;
+    ConstPart *constPart;
+    ConstExprList *constExprList;
+    ConstValue *constValue;
+    TypePart *typePart;
+    TypeDeclList *typeDeclList;
+    TypeDefinition *typeDefinition;
+    TypeDecl *typeDecl;
+    SimpleTypeDecl *simpleTypeDecl;
+    ArrayTypeDecl *arrayTypeDecl;
+    RecordTypeDecl *recordTypeDecl;
+    FieldDeclList *fieldDeclList;
+    FieldDecl *fieldDecl;
+    NameList *nameList;
+    VarPart *varPart;
+    VarDeclList *varDeclList;
+    VarDecl *varDecl;
+    RoutinePart *routinePart;
+    FunctionDecl *functionDecl;
+    FunctionHead *functionHead;
+    ProcedureDecl *procedureDecl;
+    ProcedureHead *procedureHead;
+    Parameters *parameters;
+    ParaDeclList *paraDeclList;
+    ParaTypeList *paraTypeList;
+    VarParaList *varParaList;
+    ValParaList *valParaList;
+    RoutineBody *routineBody;
+    CompoundStmt *compountStmt;
+    StmtList *stmtList;
+    */
+
+    AbstractStatement *abstractStatement;
+    AbstractExpression *abstractExpression;
     std::string *string;
     int token;
 }
@@ -24,23 +56,23 @@
    match our tokens.l lex file. We also define the node type
    they represent.
  */
-%token  TIDENTIFIER TINTEGER TDOUBLE
-%token  TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
-%token  TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
-%token  TPLUS TMINUS TMUL TDIV
+%token <string> TIDENTIFIER TINTEGER TDOUBLE
+%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
+%token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
+%token <token> TPLUS TMINUS TMUL TDIV
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
    we call an ident (defined by union type ident) we are really
    calling an (NIdentifier*). It makes the compiler happy.
  */
-%type  ident
-%type  numeric expr
-%type  func_decl_args
-%type  call_args
-%type  program stmts block
-%type  stmt var_decl func_decl
-%type  comparison
+%type <ident> ident
+%type <expr> numeric expr
+%type <varvec> func_decl_args
+%type <exprvec> call_args
+%type <block> program stmts block
+%type <stmt> stmt var_decl func_decl
+%type <token> comparison
 
 /* Operator precedence for mathematical operators */
 %left PLUS MINUS
@@ -50,7 +82,7 @@
 
 %%
 
-empty :
+
 program : program_head  routine  DOT
 program_head : PROGRAM  ID  SEMI
 routine : routine_head  routine_body
@@ -80,8 +112,11 @@ var_part : VAR  var_decl_list  |  empty
 var_decl_list :  var_decl_list  var_decl  |  var_decl
 var_decl :  name_list  COLON  type_decl  SEMI
 
-routine_part :  routine_part  function_decl  |  routine_part  procedure_decl 
-|  function_decl  |  procedure_decl  | empty
+routine_part :  routine_part  function_decl  
+                  |  routine_part  procedure_decl 
+                  |  function_decl  
+                  |  procedure_decl  
+                  |  empty
 function_decl : function_head  SEMI  sub_routine  SEMI
 function_head :  FUNCTION  NAME  parameters  COLON  simple_type_decl 
 procedure_decl :  procedure_head  SEMI  sub_routine  SEMI
@@ -155,5 +190,7 @@ factor : NAME
       |  ID  LB  expression  RB
       |  ID  DOT  ID
 args_list : args_list  COMMA  expression  |  expression
+
+empty :
 
 %%
