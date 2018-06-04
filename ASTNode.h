@@ -6,8 +6,6 @@
 #define SPLC_NODE_H
 
 #include <iostream>
-#include <utility>
-#include <vector>
 #include <llvm/IR/Value.h>
 #include "NodePredeclaration.h"
 

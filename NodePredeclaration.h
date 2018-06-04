@@ -5,12 +5,15 @@
 #ifndef SPLC_NODEPRECEDENCE_H
 #define SPLC_NODEPRECEDENCE_H
 
+#include <string>
+
+class Program;
+
 class ProgramHead;
 
 class Routine;
 
 class RoutineHead;
-
 class SubRoutine;
 
 class LabelPart;

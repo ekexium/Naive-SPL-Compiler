@@ -9,7 +9,7 @@
 /* Represents the many different ways we can access our data */
 %union {
     Node *node;
-    
+    Program *program;
     ProgramHead *programHead;
     Routine *routine;
     RoutineHead *routineHead;
@@ -67,35 +67,84 @@
 
     AbstractStatement *abstractStatement;
     AbstractExpression *abstractExpression;
+
+//     int integer;
+//     double double;
     std::string *string;
     int token;
 }
 
-/* Define our terminal symbols (tokens). This should
-   match our tokens.l lex file. We also define the node type
-   they represent.
- */
-%token <string> TIDENTIFIER TINTEGER TDOUBLE
-%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
-%token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
-%token <token> TPLUS TMINUS TMUL TDIV
+%token <token> SYS_CON SYS_FUNCT SYS_PROC SYS_TYPE 
+%token <token> LP RP LB RB DOT COMMA COLON
+%token <token> ASSIGN DOTDOT SEMI AND  ARRAY BEGIN CASE
+%token <token> CONST DO DOWNTO ELSE END FOR FUNCTION
+%token <token> GOTO IF IN MOD NOT OF PACKED PROCECURE
+%token <token> PROGRAM RECORD REPEAT SET THEN TO TYPE
+%token <token> UNTIL VAR WHILE WITH
+%token <token> NOT
+%token <token> MUL DIV MOD AND
+%token <token> PLUS MINUS OR XOR
+%token <token> EQ NE GE GT LE LT 
+%token <token> ID INTEGER DOUBLE
 
-/* Define the type of node our nonterminal symbols represent.
-   The types refer to the %union declaration above. Ex: when
-   we call an ident (defined by union type ident) we are really
-   calling an (NIdentifier*). It makes the compiler happy.
- */
-%type <ident> ident
-%type <expr> numeric expr
-%type <varvec> func_decl_args
-%type <exprvec> call_args
-%type <block> program stmts block
-%type <stmt> stmt var_decl func_decl
-%type <token> comparison
+%type <program> program
+%type <programHead> program_head
+%type <routine> routine
+%type <routineHead> routine_head
+%type <subRoutine> sub_routine
+%type <labelPart> label_part
+%type <constPart> const_part
+%type <constExprList> const_expr_list
+%type <constValue> const_value
+%type <typePart> type_part
+%type <typeDeclList> type_decl_list
+%type <typeDefinition> type_definition
+%type <typeDecl> type_decl
+%type <simpleTypeDecl> simple_type_decl
+%type <arrayTypeDecl> array_type_decl
+%type <recordTypeDecl> record_type_decl
+%type <fieldDeclList> field_decl_list
+%type <fieldDecl> field_decl
+%type <nameList> name_list
+%type <varPart> var_part
+%type <varDeclList> var_decl_list
+%type <varDecl> var_decl
+%type <routinePart> routine_part
+%type <functionDecl> function_decl
+%type <functionHead> function_head
+%type <procedureDecl> procedure_decl
+%type <procedureHead> procedure_head
+%type <parameters> parameters
+%type <paraDeclList> para_decl_list
+%type <paraTypeList> para_type_list
+%type <varParaList> var_para_list
+%type <valParaList> val_para_list
+%type <routineBody> routine_body
+%type <compountStmt> compount_stmt
+%type <stmtList> stmt_list
+%type <stmt> stmt
+%type <nonLabelStmt> non_label_stmt
+%type <assignStmt> assign_stmt
+%type <procStmt> proc_stmt
+%type <ifStmt> if_stmt
+%type <elseClause> else_clause
+%type <repeatStmt> repeat_stmt
+%type <whileStmt> while_stmt
+%type <forStmt> for_stmt
+%type <direction> direction
+%type <caseStmt> case_stmt
+%type <caseExprList> case_expr_list
+%type <caseExpr> case_expr
+%type <gotoStmt> goto_stmt
+%type <expressionList> expression_list
+%type <expression> expression
+%type <expr> expr
+%type <term> term
+%type <factor> factor
+%type <argsList> args_list
 
-/* Operator precedence for mathematical operators */
-%left PLUS MINUS
-%left MUL DIV
+// %left PLUS MINUS
+// %left MUL DIV
 
 %start program
 
