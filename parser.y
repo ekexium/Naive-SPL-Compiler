@@ -9,7 +9,7 @@
 /* Represents the many different ways we can access our data */
 %union {
     Node *node;
-    /*
+    
     ProgramHead *programHead;
     Routine *routine;
     RoutineHead *routineHead;
@@ -44,7 +44,26 @@
     RoutineBody *routineBody;
     CompoundStmt *compountStmt;
     StmtList *stmtList;
-    */
+    Stmt *stmt;
+    NonLabelStmt *nonLabelStmt;
+    AssignStmt *assignStmt;
+    ProcStme *procStmt;
+    IfStmt *ifStmt;
+    ElseClause *elseClause;
+    RepeatStmt *repeatStmt;
+    WhileStme *whileStmt;
+    ForStmt *forStmt;
+    Direction *direction;
+    CaseStmt *caseStmt;
+    CaseExprList *caseExprList;
+    CaseExpr *caseExpr;
+    GotoStmt *gotoStmt;
+    ExpressionList *expressionList;
+    Expression *expression;
+    Expr *expr;
+    Term *term;
+    Factor *factor;
+    ArgsList *argsList;
 
     AbstractStatement *abstractStatement;
     AbstractExpression *abstractExpression;
@@ -124,7 +143,7 @@ procedure_head :  PROCEDURE NAME parameters
 parameters : LP  para_decl_list  RP  |  empty
 para_decl_list : para_decl_list  SEMI  para_type_list | para_type_list
 para_type_list : var_para_list COLON  simple_type_decl  
-|  val_para_list  COLON  simple_type_decl
+                  |  val_para_list  COLON  simple_type_decl
 var_para_list : VAR  name_list
 val_para_list : name_list
 
@@ -162,7 +181,8 @@ case_expr_list : case_expr_list  case_expr
 case_expr : const_value  COLON  stmt  SEMI
           |  ID  COLON  stmt  SEMI
 goto_stmt : GOTO  INTEGER
-expression_list : expression_list  COMMA  expression  |  expression
+expression_list : expression_list  COMMA  expression  
+            |  expression
 expression : expression  GE  expr  
             |  expression  GT  expr  
             |  expression  LE  expr
