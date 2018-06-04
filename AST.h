@@ -6,6 +6,7 @@
 #define SPLC_NODE_H
 
 #include <iostream>
+#include <utility>
 #include <llvm/IR/Value.h>
 #include "NodePredeclaration.h"
 
@@ -64,10 +65,15 @@ public:
 class RoutineHead : public AbstractStatement {
 public:
 
-	LabelPart *labelPart{};
+	LabelPart *labelPart;
+	ConstPart *constPart;
+	TypePart *typePart;
+	VarPart *varPart;
+	RoutinePart *routinePart;
 
-	explicit RoutineHead(LabelPart *labelPart) : labelPart(labelPart) {}
-
+	RoutineHead(LabelPart *labelPart, ConstPart *constPart, TypePart *typePart, VarPart *varPart,
+				RoutinePart *routinePart) : labelPart(labelPart), constPart(constPart), typePart(typePart),
+											varPart(varPart), routinePart(routinePart) {}
 };
 
 class LabelPart : public AbstractStatement {
@@ -87,11 +93,13 @@ public:
 class ConstExprList : public AbstractStatement {
 public:
 
+	std::string name;
 	ConstExprList *preList{};
 	ConstValue *value{};
 
-	ConstExprList(ConstExprList *preList, ConstValue *value) : preList(preList), value(value) {}
-
+	ConstExprList(std::string name, ConstExprList *preList, ConstValue *value) : name(std::move(name)),
+																				 preList(preList),
+																				 value(value) {}
 };
 
 class ConstValue : public AbstractExpression {
@@ -107,6 +115,15 @@ public:
 	int type{};
 
 	ConstValue(std::string value, int type) : value(std::move(value)), type(type) { assert(type >= 1 && type <= 5); }
+
+	ConstValue *negate() {
+		if (value == "-" || value.empty())
+			return new ConstValue("", type);
+		if (value[0] == '-')
+			return new ConstValue(value.substr(1), type);
+		else
+			return new ConstValue("-" + value, type);
+	}
 };
 
 class TypePart : public AbstractStatement {
@@ -130,11 +147,10 @@ public:
 
 class TypeDefinition : public AbstractStatement {
 public:
-
+	std::string name;
 	TypeDecl *typeDecl{};
 
-	explicit TypeDefinition(TypeDecl *typeDecl) : typeDecl(typeDecl) {}
-
+	TypeDefinition(std::string name, TypeDecl *typeDecl) : name(std::move(name)), typeDecl(typeDecl) {}
 };
 
 class TypeDecl : public AbstractStatement {
@@ -161,16 +177,15 @@ public:
 	static const int TYPE_NAME = 2;
 	static const int ENUMERATION = 3;
 	static const int RANGE = 4;
+	static const int NAME_RANGE = 5;
 
 	int type{};
 	std::string sysType;
 	std::string name;
 	NameList *nameList{};
 	//todo: manually handle negative signs?
-	int lowerBound{}, upperBound{};
-
-	SimpleTypeDecl(int type, int lowerBound, int upperBound) : type(type), lowerBound(lowerBound),
-															   upperBound(upperBound) { assert(type == RANGE); }
+	ConstValue *lowerBound{}, *upperBound{};
+	std::string lowerName, upperName;
 
 	SimpleTypeDecl(int type, const std::string &st) : type(type) {
 		if (type == SYS_TYPE)
@@ -180,8 +195,13 @@ public:
 		assert(type == SYS_TYPE || type == TYPE_NAME);
 	}
 
-	SimpleTypeDecl(int type, NameList *nameList) : type(type), nameList(nameList) { assert(type == ENUMERATION); }
+	explicit SimpleTypeDecl(NameList *nameList) : type(type), nameList(nameList), type(ENUMERATION) {}
 
+	SimpleTypeDecl(ConstValue *lowerBound, ConstValue *upperBound) : lowerBound(lowerBound),
+																	 upperBound(upperBound), type(RANGE) {}
+
+	SimpleTypeDecl(std::string lowerName, std::string upperName) : lowerName(std::move(lowerName)),
+																   upperName(std::move(upperName)), type(NAME_RANGE) {}
 };
 
 class ArrayTypeDecl : public AbstractStatement {
@@ -377,7 +397,7 @@ public:
 class StmtList : public AbstractStatement {
 public:
 	StmtList *preList{};
-	Stmt *stmt{};
+	Stmt *stmt{}; // NOTICE: fixme: might be nullptr, due to the grammar given...
 
 	StmtList(StmtList *preList, Stmt *stmt) : preList(preList), stmt(stmt) {}
 };
