@@ -6,17 +6,17 @@
 #define SPLC_NODE_H
 
 #include <iostream>
+#include <map>
 #include <utility>
 #include <llvm/IR/Value.h>
 #include "NodePredeclaration.h"
-
-class CodeGenContext;
+#include "codegen.h"
 
 class Node {
 public:
 	virtual ~Node() = default;
 
-	virtual llvm::Value *codeGen(CodeGenContext &context) {}
+	virtual llvm::Value *codeGen(CodeGenContext &context) = 0;
 };
 
 class AbstractExpression : public Node {
@@ -575,14 +575,6 @@ public:
 	CaseStmt(Expression *expression, CaseExprList *caseExprList) : expression(expression), caseExprList(caseExprList) {}
 };
 
-class CaseExprList : public AbstractStatement {
-public:
-	CaseExprList *preList{};
-	CaseExpr caseExpr;
-
-	CaseExprList(CaseExprList *preList, const CaseExpr &caseExpr) : preList(preList), caseExpr(caseExpr) {}
-};
-
 class CaseExpr : public AbstractStatement {
 public:
 	static const int CONST = 1;
@@ -592,9 +584,21 @@ public:
 	std::string id;
 	Stmt *stmt;
 
+//	CaseExpr(){}
+
+//	CaseExpr(const CaseExpr & caseExpr) : constValue(caseExpr.constValue), stmt(caseExpr.stmt), type(caseExpr.type) {}
+
 	CaseExpr(ConstValue *constValue, Stmt *stmt) : constValue(constValue), stmt(stmt), type(CONST) {}
 
 	CaseExpr(std::string id, Stmt *stmt) : id(std::move(id)), stmt(stmt), type(ID) {}
+};
+
+class CaseExprList : public AbstractStatement {
+public:
+	CaseExprList *preList{};
+	CaseExpr caseExpr;
+
+	CaseExprList(CaseExprList *preList, const CaseExpr &caseExpr) : preList(preList), caseExpr(caseExpr) {}
 };
 
 class GotoStmt : public AbstractStatement {

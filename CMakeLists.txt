@@ -7,4 +7,4 @@ set(LINK_DIR /usr/local/opt/llvm/lib)
 include_directories(${INC_DIR})
 link_directories(${LINK_DIR})
 
-add_executable(splc main.cpp AST.h NodePredeclaration.h AST.cpp)
+add_executable(splc main.cpp AST.h NodePredeclaration.h AST.cpp codegen.cpp codegen.h)
