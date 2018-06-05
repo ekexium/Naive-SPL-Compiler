@@ -4,7 +4,7 @@
 #include "parser.hpp"
 
 #define  SaveToken  yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t) (printf("%s\n", yytext), yylval.token = t)
+#define TOKEN(t) (yylval.token = t)
 %}
 
 sys_con "false" | "true" | "maxint"
