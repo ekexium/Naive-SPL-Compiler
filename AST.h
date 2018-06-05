@@ -84,7 +84,7 @@ public:
 class ConstPart : public AbstractStatement {
 public:
 
-	ConstExprList *constExprList{};
+	ConstExprList *constExprList{}; // might be nullptr
 
 	explicit ConstPart(ConstExprList *constExprList) : constExprList(constExprList) {}
 
@@ -108,7 +108,8 @@ public:
 	static const int REAL = 2;
 	static const int CHAR = 3;
 	static const int SYS_CON = 4;
-	//todo: does string exist?
+	//todo: does char/string exist?
+	//don't exist in yacc, but there is chr() function.
 	static const int STRING = 5;
 
 	std::string value;

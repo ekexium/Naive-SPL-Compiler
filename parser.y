@@ -42,7 +42,7 @@
     VarParaList *varParaList;
     ValParaList *valParaList;
     RoutineBody *routineBody;
-    CompoundStmt *compountStmt;
+    CompoundStmt *compoundStmt;
     StmtList *stmtList;
     Stmt *stmt;
     NonLabelStmt *nonLabelStmt;
@@ -73,17 +73,18 @@
 }
 
 %token <string> SYS_CON SYS_FUNCT SYS_PROC SYS_TYPE 
-%token <string> ID INTEGER DOUBLE
+%token <string> ID INTEGER REAL
 %token <token> LP RP LB RB DOT COMMA COLON
-%token <token> ASSIGN DOTDOT SEMI AND  ARRAY BEGIN CASE
+%token <token> ASSIGN DOTDOT SEMI ARRAY BEGIN CASE
 %token <token> CONST DO DOWNTO ELSE END FOR FUNCTION
-%token <token> GOTO IF IN MOD NOT OF PACKED PROCECURE
+%token <token> GOTO IF IN OF PACKED PROCEDURE
 %token <token> PROGRAM RECORD REPEAT SET THEN TO TYPE
 %token <token> UNTIL VAR WHILE WITH
 %token <token> NOT
 %token <token> MUL DIV MOD AND
 %token <token> PLUS MINUS OR XOR
 %token <token> EQ NE GE GT LE LT 
+%token <token> READ
 
 
 %type <program> program
@@ -119,7 +120,7 @@
 %type <varParaList> var_para_list
 %type <valParaList> val_para_list
 %type <routineBody> routine_body
-%type <compountStmt> compount_stmt
+%type <compoundStmt> compound_stmt
 %type <stmtList> stmt_list
 %type <stmt> stmt
 %type <nonLabelStmt> non_label_stmt
@@ -156,19 +157,20 @@ sub_routine: routine_head  routine_body {$$ = new SubRoutine($1, $2);}
 
 routine_head: label_part  const_part  type_part  var_part  routine_part {$$ = new RoutineHead($1, $2, $3, $4, $5);}
 label_part: empty {$$ = new LabelPart();}
-const_part: CONST  const_expr_list  |  empty {$$ = new ConstPart($2);}
-const_expr_list: const_expr_list  NAME  EQUAL  const_value  SEMI {$$ = new ConstExprList(*$2, $1, $4);}
-                  |  NAME  EQUAL  const_value  SEMI {$$ = new ConstExprList(*$1, nullptr, $3);}
+const_part: CONST  const_expr_list  {$$ = new ConstPart($2);}
+                  |  empty {$$ = new ConstPart(nullptr)}
+const_expr_list: const_expr_list  NAME  EQ  const_value  SEMI {$$ = new ConstExprList(*$2, $1, $4);}
+                  |  NAME  EQ  const_value  SEMI {$$ = new ConstExprList(*$1, nullptr, $3);}
 const_value: INTEGER  {$$ = new ConstValue(*$1, ConstValue::INTEGER);}
                   |  REAL  {$$ = new ConstValue(*$1, ConstValue::REAL);}
-                  |  CHAR  {$$ = new ConstValue(*$1, ConstValue::CHAR);}
-                  |  STRING  {$$ = new ConstValue(*$1, ConstValue::STRING);}
                   |  SYS_CON {$$ = new ConstValue(*$1, ConstValue::SYS_CON);}
+                //   |  CHAR  {$$ = new ConstValue(*$1, ConstValue::CHAR);}
+                //   |  STRING  {$$ = new ConstValue(*$1, ConstValue::STRING);}
 type_part: TYPE type_decl_list {$$ = new TypePart($1);}
                   |  empty {$$ = new TypePart(nullptr);}
 type_decl_list: type_decl_list  type_definition {$$ = new TypeDeclList($1, $2);}
                   |  type_definition {$$ = new TypeDeclList(nullptr, $1);}
-type_definition: NAME  EQUAL  type_decl  SEMI {$$ = new TypeDefinition(*$1, $2);}
+type_definition: NAME  EQ  type_decl  SEMI {$$ = new TypeDefinition(*$1, $3);}
 type_decl: simple_type_decl {$$ = new TypeDecl($1);}
                   |  array_type_decl {$$ = new TypeDecl($1);}
                   |  record_type_decl {$$ = new TypeDecl($1);}
@@ -248,7 +250,7 @@ case_expr: const_value  COLON  stmt  SEMI {$$ = new CaseExpr($1, $3);}
                   |  ID  COLON  stmt  SEMI {$$ = new CaseExpr(*$1, $3);}
 goto_stmt: GOTO  INTEGER {$$ = new GotoStmt($2);}
 expression_list: expression_list  COMMA  expression {$$ = new ExpressionList($1, $3);}
-                  |  expression {$$ = new ExpressionList(nullptr, $3);}
+                  |  expression {$$ = new ExpressionList(nullptr, $1);}
 expression: expression  GE  expr {$$ = new Expression(Expression::GE, $1, $3);}
                   |  expression  GT  expr  {$$ = new Expression(Expression::GT, $1, $3);}
                   |  expression  LE  expr  {$$ = new Expression(Expression::LE, $1, $3);}
