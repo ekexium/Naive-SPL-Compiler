@@ -1,10 +1,10 @@
 %{
 #include <string>
-#include "ASTNode.h"
+#include "AST.h"
 #include "parser.hpp"
 
 #define  SaveToken  yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t) (yylval.token = t)
+#define TOKEN(t) (printf("%s\n", yytext), yylval.token = t)
 %}
 
 sys_con "false" | "true" | "maxint"
@@ -16,10 +16,10 @@ sys_type "boolean" | "char" | "integer" | "real"
 %%
 [ \t\n] ;
 "read" return TOKEN(READ);
-sys_con  SaveToken; return TOKEN(SYS_CON);
-sys_funct  SaveToken; return TOKEN(SYS_FUNCT);
-sys_proc SaveToken; return TOKEN(SYS_PROC);
-sys_type  SaveToken; return TOKEN(SYS_TYPE);
+sys_con  SaveToken; return SYS_CON;
+sys_funct  SaveToken; return SYS_FUNCT;
+sys_proc SaveToken; return SYS_PROC;
+sys_type  SaveToken; return SYS_TYPE;
 "("  return TOKEN(LP);
 ")"  return TOKEN(RP);
 "["  return TOKEN(LB);
@@ -40,11 +40,12 @@ sys_type  SaveToken; return TOKEN(SYS_TYPE);
 "="  return TOKEN(EQ);
 ":="  return TOKEN(ASSIGN);
 "MOD"  return TOKEN(MOD);
+"%" return TOKEN(MOD);
 ".."  return TOKEN(DOTDOT);
 ";"  return TOKEN(SEMI);
 "and"  return TOKEN(AND);
 "array"  return TOKEN(ARRAY);
-"begin"  return TOKEN(BEGIN);
+"begin"  return TOKEN(BBEGIN);
 "case"  return TOKEN(CASE);
 "const"  return TOKEN(CONST);
 "div"  return TOKEN(DIV);
@@ -77,7 +78,9 @@ sys_type  SaveToken; return TOKEN(SYS_TYPE);
 [a-zA-Z][_a-zA-Z0-9]* SaveToken; return ID;
 [0-9]+  SaveToken; return INTEGER;
 [0-9]+\.[0-9]* SaveToken; return REAL;
-. printf("Unknown token!/n"); yyterminate();
+'^'' SaveToken; return CHAR;
+'[^']*' SaveToken; return STRING;
+. printf("Unknown token:%s\n", yytext); yyterminate();
 %%
 int yywrap()
 {

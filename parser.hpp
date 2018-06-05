@@ -46,59 +46,61 @@
      ID = 262,
      INTEGER = 263,
      REAL = 264,
-     LP = 265,
-     RP = 266,
-     LB = 267,
-     RB = 268,
-     DOT = 269,
-     COMMA = 270,
-     COLON = 271,
-     ASSIGN = 272,
-     DOTDOT = 273,
-     SEMI = 274,
-     ARRAY = 275,
-     BEGIN = 276,
-     CASE = 277,
-     CONST = 278,
-     DO = 279,
-     DOWNTO = 280,
-     ELSE = 281,
-     END = 282,
-     FOR = 283,
-     FUNCTION = 284,
-     GOTO = 285,
-     IF = 286,
-     IN = 287,
-     OF = 288,
-     PACKED = 289,
-     PROCEDURE = 290,
-     PROGRAM = 291,
-     RECORD = 292,
-     REPEAT = 293,
-     SET = 294,
-     THEN = 295,
-     TO = 296,
-     TYPE = 297,
-     UNTIL = 298,
-     VAR = 299,
-     WHILE = 300,
-     WITH = 301,
-     NOT = 302,
-     MUL = 303,
-     DIV = 304,
-     MOD = 305,
-     AND = 306,
-     PLUS = 307,
-     MINUS = 308,
-     OR = 309,
-     XOR = 310,
-     EQ = 311,
-     NE = 312,
-     GE = 313,
-     GT = 314,
-     LE = 315,
-     LT = 316,
-     READ = 317
+     STRING = 265,
+     CHAR = 266,
+     LP = 267,
+     RP = 268,
+     LB = 269,
+     RB = 270,
+     DOT = 271,
+     COMMA = 272,
+     COLON = 273,
+     ASSIGN = 274,
+     DOTDOT = 275,
+     SEMI = 276,
+     ARRAY = 277,
+     BBEGIN = 278,
+     CASE = 279,
+     CONST = 280,
+     DO = 281,
+     DOWNTO = 282,
+     ELSE = 283,
+     END = 284,
+     FOR = 285,
+     FUNCTION = 286,
+     GOTO = 287,
+     IF = 288,
+     IN = 289,
+     OF = 290,
+     PACKED = 291,
+     PROCEDURE = 292,
+     PROGRAM = 293,
+     RECORD = 294,
+     REPEAT = 295,
+     SET = 296,
+     THEN = 297,
+     TO = 298,
+     TYPE = 299,
+     UNTIL = 300,
+     VAR = 301,
+     WHILE = 302,
+     WITH = 303,
+     NOT = 304,
+     MUL = 305,
+     DIV = 306,
+     MOD = 307,
+     AND = 308,
+     PLUS = 309,
+     MINUS = 310,
+     OR = 311,
+     XOR = 312,
+     EQ = 313,
+     NE = 314,
+     GE = 315,
+     GT = 316,
+     LE = 317,
+     LT = 318,
+     READ = 319
    };
 #endif
 /* Tokens.  */
@@ -109,59 +111,61 @@
 #define ID 262
 #define INTEGER 263
 #define REAL 264
-#define LP 265
-#define RP 266
-#define LB 267
-#define RB 268
-#define DOT 269
-#define COMMA 270
-#define COLON 271
-#define ASSIGN 272
-#define DOTDOT 273
-#define SEMI 274
-#define ARRAY 275
-#define BEGIN 276
-#define CASE 277
-#define CONST 278
-#define DO 279
-#define DOWNTO 280
-#define ELSE 281
-#define END 282
-#define FOR 283
-#define FUNCTION 284
-#define GOTO 285
-#define IF 286
-#define IN 287
-#define OF 288
-#define PACKED 289
-#define PROCEDURE 290
-#define PROGRAM 291
-#define RECORD 292
-#define REPEAT 293
-#define SET 294
-#define THEN 295
-#define TO 296
-#define TYPE 297
-#define UNTIL 298
-#define VAR 299
-#define WHILE 300
-#define WITH 301
-#define NOT 302
-#define MUL 303
-#define DIV 304
-#define MOD 305
-#define AND 306
-#define PLUS 307
-#define MINUS 308
-#define OR 309
-#define XOR 310
-#define EQ 311
-#define NE 312
-#define GE 313
-#define GT 314
-#define LE 315
-#define LT 316
-#define READ 317
+#define STRING 265
+#define CHAR 266
+#define LP 267
+#define RP 268
+#define LB 269
+#define RB 270
+#define DOT 271
+#define COMMA 272
+#define COLON 273
+#define ASSIGN 274
+#define DOTDOT 275
+#define SEMI 276
+#define ARRAY 277
+#define BBEGIN 278
+#define CASE 279
+#define CONST 280
+#define DO 281
+#define DOWNTO 282
+#define ELSE 283
+#define END 284
+#define FOR 285
+#define FUNCTION 286
+#define GOTO 287
+#define IF 288
+#define IN 289
+#define OF 290
+#define PACKED 291
+#define PROCEDURE 292
+#define PROGRAM 293
+#define RECORD 294
+#define REPEAT 295
+#define SET 296
+#define THEN 297
+#define TO 298
+#define TYPE 299
+#define UNTIL 300
+#define VAR 301
+#define WHILE 302
+#define WITH 303
+#define NOT 304
+#define MUL 305
+#define DIV 306
+#define MOD 307
+#define AND 308
+#define PLUS 309
+#define MINUS 310
+#define OR 311
+#define XOR 312
+#define EQ 313
+#define NE 314
+#define GE 315
+#define GT 316
+#define LE 317
+#define LT 318
+#define READ 319
 
 
 
@@ -234,7 +238,7 @@ typedef union YYSTYPE
     int token;
 }
 /* Line 1529 of yacc.c.  */
-#line 238 "parser.hpp"
+#line 242 "parser.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
