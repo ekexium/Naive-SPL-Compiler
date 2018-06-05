@@ -47,11 +47,11 @@
     Stmt *stmt;
     NonLabelStmt *nonLabelStmt;
     AssignStmt *assignStmt;
-    ProcStme *procStmt;
+    ProcStmt *procStmt;
     IfStmt *ifStmt;
     ElseClause *elseClause;
     RepeatStmt *repeatStmt;
-    WhileStme *whileStmt;
+    WhileStmt *whileStmt;
     ForStmt *forStmt;
     Direction *direction;
     CaseStmt *caseStmt;
@@ -215,66 +215,69 @@ compound_stmt: BEGIN  stmt_list  END {$$ = new CompoundStmt($2);}
 stmt_list: stmt_list  stmt  SEMI  {$$ = new StmtList($1, $2);}
                   |  empty {$$ = new StmtList(nullptr, nullptr);}
 stmt: INTEGER  COLON  non_label_stmt {$$ = new Stmt(Stmt::LABELED, $3);}
-            | non_label_stmt {$$ = new Stmt(Stmt::UNLABELED, $1);}
+                  | non_label_stmt {$$ = new Stmt(Stmt::UNLABELED, $1);}
 non_label_stmt: assign_stmt {$$ = new NonLabelStmt($1);}
-            | proc_stmt {$$ = new NonLabelStmt($1);}
-            | compound_stmt {$$ = new NonLabelStmt($1);}
-            | if_stmt {$$ = new NonLabelStmt($1);}
-            | repeat_stmt {$$ = new NonLabelStmt($1);}
-            | while_stmt {$$ = new NonLabelStmt($1);}
-            | for_stmt {$$ = new NonLabelStmt($1);}
-            | case_stmt {$$ = new NonLabelStmt($1);}
-            | goto_stmt {$$ = new NonLabelStmt($1);}
+                  | proc_stmt {$$ = new NonLabelStmt($1);}
+                  | compound_stmt {$$ = new NonLabelStmt($1);}
+                  | if_stmt {$$ = new NonLabelStmt($1);}
+                  | repeat_stmt {$$ = new NonLabelStmt($1);}
+                  | while_stmt {$$ = new NonLabelStmt($1);}
+                  | for_stmt {$$ = new NonLabelStmt($1);}
+                  | case_stmt {$$ = new NonLabelStmt($1);}
+                  | goto_stmt {$$ = new NonLabelStmt($1);}
 assign_stmt: ID  ASSIGN  expression {$$ = new AssignStmt(*$1, $3);}
-           | ID LB expression RB ASSIGN expression {$$ = new AssignStmt(*$1, $3, $6);}
-           | ID  DOT  ID  ASSIGN  expression {$$ = new AssignStmt(*$1, *$3, $5);}
-proc_stmt: ID
-          |  ID  LP  args_list  RP
-          |  SYS_PROC
-          |  SYS_PROC  LP  expression_list  RP
-          |  READ  LP  factor  RP
-if_stmt: IF  expression  THEN  stmt  else_clause
-else_clause: ELSE stmt |  empty
-repeat_stmt: REPEAT  stmt_list  UNTIL  expression
-while_stmt: WHILE  expression  DO stmt
-for_stmt: FOR  ID  ASSIGN  expression  direction  expression  DO stmt
-direction: TO | DOWNTO
-case_stmt: CASE expression OF case_expr_list  END
-case_expr_list: case_expr_list  case_expr  
-            |  case_expr
-case_expr: const_value  COLON  stmt  SEMI
-          |  ID  COLON  stmt  SEMI
-goto_stmt: GOTO  INTEGER
-expression_list: expression_list  COMMA  expression  
-            |  expression
-expression: expression  GE  expr  
-            |  expression  GT  expr  
-            |  expression  LE  expr
-            |  expression  LT  expr 
-            |  expression  EQ  expr  
-            |  expression  NE  expr  
-            |  expr
-expr: expr  PLUS  term  
-      |  expr  MINUS  term  
-      |  expr  OR  term  
-      |  term
-term: term  MUL  factor  
-      |  term  DIV  factor  
-      |  term  MOD  factor 
-      |  term  AND  factor    
-      |  factor
-factor: NAME  
-      |  NAME  LP  args_list  RP  
-      |  SYS_FUNCT 
-      |  SYS_FUNCT  LP  args_list  RP  
-      |  const_value  
-      |  LP  expression  RP
-      |  NOT  factor    
-      |  MINUS  factor  
-      |  ID  LB  expression  RB
-      |  ID  DOT  ID
-args_list: args_list  COMMA  expression  |  expression
+                  | ID LB expression RB ASSIGN expression {$$ = new AssignStmt(*$1, $3, $6);}
+                  | ID  DOT  ID  ASSIGN  expression {$$ = new AssignStmt(*$1, *$3, $5);}
+proc_stmt: ID {$$ = new ProcStmt(ProcStmt::SIMPLE, *$1);}
+                  |  ID  LP  args_list  RP {$$ = new ProcStmt(*$1, $3);}
+                  |  SYS_PROC {$$ = new ProcStmt(ProcStmt::SYS_PROC, *$1);}
+                  |  SYS_PROC  LP  expression_list  RP {$$ = new ProcStmt(*$1, $3);}
+                  |  READ  LP  factor  RP {$$ = new ProcStmt($4);}
+if_stmt: IF  expression  THEN  stmt  else_clause {$$ = new IfStmt($2, $4, $5);}
+else_clause: ELSE stmt {$$ = new ElseClause($2);}
+                  |  empty {$$ = new ElseCaluse(nullptr);}
+repeat_stmt: REPEAT  stmt_list  UNTIL  expression {$$ = new RepeatStmt($2, $4);}
+while_stmt: WHILE  expression  DO stmt {$$ = new WhileStmt($2, $4);}
+for_stmt: FOR  ID  ASSIGN  expression  direction  expression  DO stmt {$$ = new ForStmt(*$2, $4, $5, $6, $8);}
+direction: TO {$$ = new Direction(Direction::TO);}
+                  | DOWNTO {$$ = new Direction(Direction::DOWNTO);}
+case_stmt: CASE expression OF case_expr_list  END {$$ = new CaseStme($2, $4);}
+case_expr_list: case_expr_list  case_expr {$$ = new CaseExprList($1, $2);}
+                  |  case_expr {$$ = new CaseExprList(nullptr, $1);}
+case_expr: const_value  COLON  stmt  SEMI {$$ = new CaseExpr($1, $3);}
+                  |  ID  COLON  stmt  SEMI {$$ = new CaseExpr(*$1, $3);}
+goto_stmt: GOTO  INTEGER {$$ = new GotoStmt($2);}
+expression_list: expression_list  COMMA  expression {$$ = new ExpressionList($1, $3);}
+                  |  expression {$$ = new ExpressionList(nullptr, $3);}
+expression: expression  GE  expr {$$ = new Expression(Expression::GE, $1, $3);}
+                  |  expression  GT  expr  {$$ = new Expression(Expression::GT, $1, $3);}
+                  |  expression  LE  expr  {$$ = new Expression(Expression::LE, $1, $3);}
+                  |  expression  LT  expr  {$$ = new Expression(Expression::LT, $1, $3);}
+                  |  expression  EQ  expr  {$$ = new Expression(Expression::EQ, $1, $3);}
+                  |  expression  NE  expr  {$$ = new Expression(Expression::NE, $1, $3);}
+                  |  expr {$$ = new Expression($1);}
+expr: expr  PLUS  term  {$$ = new Expr(Expr::PLUS, $1, $3);}
+                  |  expr  MINUS  term  {$$ = new Expr(Expr::MINUS, $1, $3);}
+                  |  expr  OR  term  {$$ = new Expr(Expr::OR, $1, $3);}
+                  |  term {$$ = new Expr($1);}
+term: term  MUL  factor  {$$ = new Term(Term::MUL, $1, $3);}
+                  |  term  DIV  factor  {$$ = new Term(Term::MUL, $1, $3);}
+                  |  term  MOD  factor  {$$ = new Term(Term::MUL, $1, $3);}
+                  |  term  AND  factor  {$$ = new Term(Term::MUL, $1, $3);}
+                  |  factor {$$ = new Term($1);}
+factor: NAME  {$$ = new Factor(Factor::NAME, *$1);}
+                  |  NAME  LP  args_list  RP  {$$ = new Factor(Factor::NAME_ARGS, *$1, $3);}
+                  |  SYS_FUNCT {$$ = new Factor(Factor::SYS_FUNCT, *$1);}
+                  |  SYS_FUNCT  LP  args_list  RP  {$$ = new Factor(Factor::SYS_FUNCT_ARGS, *$1, $3);}
+                  |  const_value  {$$ = new Factor($1);)}
+                  |  LP  expression  RP {$$ = new Factor($2);}
+                  |  NOT  factor {$$ = new Factor(Factor::NOT_FACTOR, $2);}
+                  |  MINUS  factor  {$$ = new Factor(Factor::MINUS_FACTOR, $2);}
+                  |  ID  LB  expression  RB {$$ = new Factor(*$1, $3);}
+                  |  ID  DOT  ID {$$ = new Factor(*$1, *$3);}
+args_list: args_list  COMMA  expression {$$ = new ArgsList($1, $3);}
+                  |  expression {$$ = new ArgsList(nullptr, $1);}
 NAME: ID {$$ = $1}
-empty:
+empty: {}
 
 %%

@@ -548,13 +548,13 @@ public:
 class ForStmt : public AbstractStatement {
 public:
 	std::string loopId;
-	Expression *lowerBound;
+	Expression *firstBound;
 	Direction *direction;
-	Expression *upperBound;
+	Expression *secondBound;
 	Stmt *stmt;
 
-	ForStmt(std::string loopId, Expression *lowerBound, Direction *direction, Expression *upperBound, Stmt *stmt)
-			: loopId(std::move(loopId)), lowerBound(lowerBound), direction(direction), upperBound(upperBound),
+	ForStmt(std::string loopId, Expression *firstBound, Direction *direction, Expression *secondBound, Stmt *stmt)
+			: loopId(std::move(loopId)), firstBound(firstBound), direction(direction), secondBound(secondBound),
 			  stmt(stmt) {}
 };
 
