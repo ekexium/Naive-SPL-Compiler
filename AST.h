@@ -115,7 +115,12 @@ public:
 	std::string value;
 	int type{};
 
-	ConstValue(std::string value, int type) : value(std::move(value)), type(type) { assert(type >= 1 && type <= 5); }
+	ConstValue(std::string value, int type) : value(std::move(value)), type(type) {
+		assert(type >= 1 && type <= 5);
+		if (type == T_CHAR) value = value[1];
+//		no T_STRING
+//		if (type == T_STRING)
+	}
 
 	ConstValue *negate() {
 		if (value == "-" || value.empty())
