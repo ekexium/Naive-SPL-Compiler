@@ -36,7 +36,7 @@ public:
     std::stack<CodeGenBlock *> blocks;
     llvm::Module *module;
 
-    CodeGenContext() : module(new llvm::Module("main", MyContext)), printf(nullptr) {}
+    CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
 
     void pushBlock(llvm::BasicBlock *block) {
         CodeGenBlock *top = nullptr;
@@ -60,7 +60,7 @@ public:
 
     void generateCode(Node *root);
 
-    llvm::Function *printf;
+    llvm::Function *print;
 };
 
 #endif //SPLC_CODEGEN_H
