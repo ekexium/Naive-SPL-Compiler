@@ -11,12 +11,12 @@
 #include <llvm/IR/Value.h>
 #include "NodePredeclaration.h"
 #include "codegen.h"
-
+class CodeGenContext;
 class Node {
 public:
 	virtual ~Node() = default;
 
-	virtual llvm::Value *codeGen(CodeGenContext &context) = 0;
+	virtual llvm::Value *codeGen(CodeGenContext &context) {return 0;}
 };
 
 class AbstractExpression : public Node {
@@ -32,6 +32,7 @@ public:
 	Routine *routine{};
 
 	Program(ProgramHead *programHead, Routine *routine) : programHead(programHead), routine(routine) {}
+	llvm::Value *codeGen(CodeGenContext &context);
 };
 
 class ProgramHead : public AbstractStatement {
@@ -49,7 +50,7 @@ public:
 	RoutineBody *routineBody{};
 
 	Routine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead), routineBody(routineBody) {}
-
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class SubRoutine : public AbstractStatement {
@@ -60,6 +61,7 @@ public:
 
 	SubRoutine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead),
 																	 routineBody(routineBody) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class RoutineHead : public AbstractStatement {
@@ -74,20 +76,21 @@ public:
 	RoutineHead(LabelPart *labelPart, ConstPart *constPart, TypePart *typePart, VarPart *varPart,
 				RoutinePart *routinePart) : labelPart(labelPart), constPart(constPart), typePart(typePart),
 											varPart(varPart), routinePart(routinePart) {}
+
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class LabelPart : public AbstractStatement {
 public:
-
 };
 
 class ConstPart : public AbstractStatement {
 public:
 
-	ConstExprList *constExprList{};
+	ConstExprList *constExprList{}; // might be nullptr
 
 	explicit ConstPart(ConstExprList *constExprList) : constExprList(constExprList) {}
-
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ConstExprList : public AbstractStatement {
@@ -100,16 +103,18 @@ public:
 	ConstExprList(std::string name, ConstExprList *preList, ConstValue *value) : name(std::move(name)),
 																				 preList(preList),
 																				 value(value) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ConstValue : public AbstractExpression {
 public:
-	static const int INTEGER = 1;
-	static const int REAL = 2;
-	static const int CHAR = 3;
-	static const int SYS_CON = 4;
-	//todo: does string exist?
-	static const int STRING = 5;
+	static const int T_INTEGER = 1;
+	static const int T_REAL = 2;
+	static const int T_CHAR = 3;
+	static const int T_SYS_CON = 4;
+	//todo: does char/string exist?
+	//don't exist in yacc, but there is chr() function.
+	static const int T_STRING = 5;
 
 	std::string value;
 	int type{};
@@ -124,6 +129,7 @@ public:
 		else
 			return new ConstValue("-" + value, type);
 	}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class TypePart : public AbstractStatement {
@@ -132,7 +138,7 @@ public:
 	TypeDeclList *typeDeclList{};
 
 	explicit TypePart(TypeDeclList *typeDeclList) : typeDeclList(typeDeclList) {}
-
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class TypeDeclList : public AbstractStatement {
@@ -142,7 +148,7 @@ public:
 
 	TypeDeclList(TypeDeclList *preList, TypeDefinition *typeDefinition) : preList(preList),
 																		  typeDefinition(typeDefinition) {}
-
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class TypeDefinition : public AbstractStatement {
@@ -151,33 +157,36 @@ public:
 	TypeDecl *typeDecl{};
 
 	TypeDefinition(std::string name, TypeDecl *typeDecl) : name(std::move(name)), typeDecl(typeDecl) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class TypeDecl : public AbstractStatement {
 public:
-	static const int SIMPLE_TYPE_DECLARE = 1;
-	static const int ARRAY_TYPE_DECLARE = 2;
-	static const int RECORD_TYPE_DECLARE = 3;
+	static const int T_SIMPLE_TYPE_DECLARE = 1;
+	static const int T_ARRAY_TYPE_DECLARE = 2;
+	static const int T_RECORD_TYPE_DECLARE = 3;
 
 	int type{};
 	SimpleTypeDecl *simpleTypeDecl{};
 	ArrayTypeDecl *arrayTypeDecl{};
 	RecordTypeDecl *recordTypeDecl{};
 
-	explicit TypeDecl(SimpleTypeDecl *simpleTypeDecl) : simpleTypeDecl(simpleTypeDecl) { type = SIMPLE_TYPE_DECLARE; }
+	explicit TypeDecl(SimpleTypeDecl *simpleTypeDecl) : simpleTypeDecl(simpleTypeDecl) { type = T_SIMPLE_TYPE_DECLARE; }
 
-	explicit TypeDecl(ArrayTypeDecl *arrayTypeDecl) : arrayTypeDecl(arrayTypeDecl) { type = ARRAY_TYPE_DECLARE; }
+	explicit TypeDecl(ArrayTypeDecl *arrayTypeDecl) : arrayTypeDecl(arrayTypeDecl) { type = T_ARRAY_TYPE_DECLARE; }
 
-	explicit TypeDecl(RecordTypeDecl *recordTypeDecl) : recordTypeDecl(recordTypeDecl) { type = RECORD_TYPE_DECLARE; }
+	explicit TypeDecl(RecordTypeDecl *recordTypeDecl) : recordTypeDecl(recordTypeDecl) { type = T_RECORD_TYPE_DECLARE; }
+
+	llvm::Type * getType(CodeGenContext & context);
 };
 
 class SimpleTypeDecl : public AbstractStatement {
 public:
-	static const int SYS_TYPE = 1;
-	static const int TYPE_NAME = 2;
-	static const int ENUMERATION = 3;
-	static const int RANGE = 4;
-	static const int NAME_RANGE = 5;
+	static const int T_SYS_TYPE = 1;
+	static const int T_TYPE_NAME = 2;
+	static const int T_ENUMERATION = 3;
+	static const int T_RANGE = 4;
+	static const int T_NAME_RANGE = 5;
 
 	int type{};
 	std::string sysType;
@@ -188,20 +197,21 @@ public:
 	std::string lowerName, upperName;
 
 	SimpleTypeDecl(int type, const std::string &st) : type(type) {
-		if (type == SYS_TYPE)
+		if (type == T_SYS_TYPE)
 			sysType = st;
-		if (type == TYPE_NAME)
+		if (type == T_TYPE_NAME)
 			name = st;
-		assert(type == SYS_TYPE || type == TYPE_NAME);
+		assert(type == T_SYS_TYPE || type == T_TYPE_NAME);
 	}
 
-	explicit SimpleTypeDecl(NameList *nameList) : type(type), nameList(nameList), type(ENUMERATION) {}
+	explicit SimpleTypeDecl(NameList *nameList) : nameList(nameList), type(T_ENUMERATION) {}
 
 	SimpleTypeDecl(ConstValue *lowerBound, ConstValue *upperBound) : lowerBound(lowerBound),
-																	 upperBound(upperBound), type(RANGE) {}
+																	 upperBound(upperBound), type(T_RANGE) {}
 
 	SimpleTypeDecl(std::string lowerName, std::string upperName) : lowerName(std::move(lowerName)),
-																   upperName(std::move(upperName)), type(NAME_RANGE) {}
+																   upperName(std::move(upperName)), type(T_NAME_RANGE) {}
+	llvm::Type * getType(CodeGenContext & context);
 };
 
 class ArrayTypeDecl : public AbstractStatement {
@@ -210,6 +220,8 @@ public:
 	TypeDecl *elementType{};
 
 	ArrayTypeDecl(SimpleTypeDecl *range, TypeDecl *elementType) : range(range), elementType(elementType) {}
+
+	llvm::Type * getType(CodeGenContext & context);
 };
 
 class RecordTypeDecl : public AbstractStatement {
@@ -217,6 +229,8 @@ public:
 	FieldDeclList *fieldDeclList{};
 
 	explicit RecordTypeDecl(FieldDeclList *fieldDeclList) : fieldDeclList(fieldDeclList) {}
+
+	llvm::Type * getType(CodeGenContext & context);
 };
 
 class FieldDeclList : public AbstractStatement {
@@ -248,6 +262,7 @@ public:
 	VarDeclList *varDeclList{};
 
 	explicit VarPart(VarDeclList *varDeclList) : varDeclList(varDeclList) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class VarDeclList : public AbstractStatement {
@@ -256,6 +271,7 @@ public:
 	VarDecl *varDecl{};
 
 	VarDeclList(VarDeclList *preList, VarDecl *varDecl) : preList(preList), varDecl(varDecl) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class VarDecl : public AbstractStatement {
@@ -264,16 +280,17 @@ public:
 	TypeDecl *typeDecl{};
 
 	VarDecl(NameList *nameList, TypeDecl *typeDecl) : nameList(nameList), typeDecl(typeDecl) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class RoutinePart : public AbstractStatement {
 public:
 	//todo: don't know what it is
-	static const int ROUTINE_FUNC = 1;
-	static const int ROUTINE_PROC = 2;
-	static const int FUNC = 3;
-	static const int PROC = 4;
-	static const int EMPTY = 5;
+	static const int T_ROUTINE_FUNC = 1;
+	static const int T_ROUTINE_PROC = 2;
+	static const int T_FUNC = 3;
+	static const int T_PROC = 4;
+	static const int T_EMPTY = 5;
 
 	int type{};
 	RoutinePart *routinePart{};
@@ -282,17 +299,19 @@ public:
 
 	RoutinePart(RoutinePart *routinePart, FunctionDecl *functionDecl) : routinePart(routinePart),
 																		functionDecl(
-																				functionDecl) { type = ROUTINE_FUNC; }
+																				functionDecl) { type = T_ROUTINE_FUNC; }
 
 	RoutinePart(RoutinePart *routinePart, ProcedureDecl *procedureDecl) : routinePart(routinePart),
 																		  procedureDecl(
-																				  procedureDecl) { type = ROUTINE_PROC; }
+																				  procedureDecl) { type = T_ROUTINE_PROC; }
 
-	explicit RoutinePart(FunctionDecl *functionDecl) : functionDecl(functionDecl) { type = FUNC; }
+	explicit RoutinePart(FunctionDecl *functionDecl) : functionDecl(functionDecl) { type = T_FUNC; }
 
-	explicit RoutinePart(ProcedureDecl *procedureDecl) : procedureDecl(procedureDecl) { type = PROC; }
+	explicit RoutinePart(ProcedureDecl *procedureDecl) : procedureDecl(procedureDecl) { type = T_PROC; }
 
-	explicit RoutinePart(int type) : type(type) { assert(type == EMPTY); }
+	explicit RoutinePart(int type) : type(type) { assert(type == T_EMPTY); }
+
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class FunctionDecl : public AbstractStatement {
@@ -302,6 +321,8 @@ public:
 
 	FunctionDecl(FunctionHead *functionHead, SubRoutine *subRoutine) : functionHead(functionHead),
 																	   subRoutine(subRoutine) {}
+
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class FunctionHead : public AbstractStatement {
@@ -323,6 +344,7 @@ public:
 
 	ProcedureDecl(ProcedureHead *procedureHead, SubRoutine *subRoutine) : procedureHead(procedureHead),
 																		  subRoutine(subRoutine) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ProcedureHead : public AbstractStatement {
@@ -347,12 +369,13 @@ public:
 
 	ParaDeclList(ParaDeclList *paraDeclList, ParaTypeList *paraTypeList) : paraDeclList(paraDeclList),
 																		   paraTypeList(paraTypeList) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ParaTypeList : public AbstractStatement {
 public:
-	static const int VAR = 1;
-	static const int VAL = 2;
+	static const int T_VAR = 1;
+	static const int T_VAL = 2;
 
 	int type{};
 	VarParaList *varParaList{};
@@ -360,10 +383,10 @@ public:
 	SimpleTypeDecl *typeDecl{};
 
 	ParaTypeList(VarParaList *varParaList, SimpleTypeDecl *typeDecl) : varParaList(varParaList),
-																	   typeDecl(typeDecl) { type = VAR; }
+																	   typeDecl(typeDecl) { type = T_VAR; }
 
 	ParaTypeList(ValParaList *valParaList, SimpleTypeDecl *typeDecl) : valParaList(valParaList),
-																	   typeDecl(typeDecl) { type = VAL; }
+																	   typeDecl(typeDecl) { type = T_VAL; }
 };
 
 class VarParaList : public AbstractStatement {
@@ -385,6 +408,7 @@ public:
 	CompoundStmt *compoundStmt{};
 
 	explicit RoutineBody(CompoundStmt *compoundStmt) : compoundStmt(compoundStmt) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class CompoundStmt : public AbstractStatement {
@@ -392,6 +416,7 @@ public:
 	StmtList *stmtList{};
 
 	explicit CompoundStmt(StmtList *stmtList) : stmtList(stmtList) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class StmtList : public AbstractStatement {
@@ -400,35 +425,39 @@ public:
 	Stmt *stmt{}; // NOTICE: fixme: might be nullptr, due to the grammar given...
 
 	StmtList(StmtList *preList, Stmt *stmt) : preList(preList), stmt(stmt) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class Stmt : public AbstractStatement {
 public:
-	static const int LABELED = 1;
-	static const int UNLABELED = 2;
+	static const int T_LABELED = 1;
+	static const int T_UNLABELED = 2;
 
 	int type{};
 	NonLabelStmt *nonLabelStmt{};
 
 	Stmt(int type, NonLabelStmt *nonLabelStmt) : type(type), nonLabelStmt(nonLabelStmt) {
-		assert(type == LABELED || type == UNLABELED);
+		assert(type == T_LABELED || type == T_UNLABELED);
 	}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class NonLabelStmt : public AbstractStatement {
 public:
-	static const int ASSIGN = 1;
-	static const int PROC = 2;
-	static const int IF = 3;
-	static const int REPEAT = 4;
-	static const int WHILE = 5;
-	static const int FOR = 6;
-	static const int CASE = 7;
-	static const int GOTO = 8;
+	static const int T_ASSIGN = 1;
+	static const int T_PROC = 2;
+	static const int T_IF = 3;
+	static const int T_REPEAT = 4;
+	static const int T_WHILE = 5;
+	static const int T_FOR = 6;
+	static const int T_CASE = 7;
+	static const int T_GOTO = 8;
+	static const int T_COMPOUND = 9;
 
 	int type{};
 	AssignStmt *assignStmt{};
 	ProcStmt *procStmt{};
+	CompoundStmt *compoundStmt{};
 	IfStmt *ifStmt{};
 	RepeatStmt *repeatStmt{};
 	WhileStmt *whileStmt{};
@@ -436,28 +465,32 @@ public:
 	CaseStmt *caseStmt{};
 	GotoStmt *gotoStmt{};
 
-	explicit NonLabelStmt(AssignStmt *assignStmt) : assignStmt(assignStmt) { type = ASSIGN; }
+	explicit NonLabelStmt(AssignStmt *assignStmt) : assignStmt(assignStmt) { type = T_ASSIGN; }
 
-	explicit NonLabelStmt(ProcStmt *procStmt) : procStmt(procStmt) { type = PROC; }
+	explicit NonLabelStmt(ProcStmt *procStmt) : procStmt(procStmt) { type = T_PROC; }
 
-	explicit NonLabelStmt(IfStmt *ifStmt) : ifStmt(ifStmt) { type = IF; }
+	explicit NonLabelStmt(CompoundStmt *compoundStmt) : compoundStmt(compoundStmt), type(T_COMPOUND) {}
 
-	explicit NonLabelStmt(RepeatStmt *repeatStmt) : repeatStmt(repeatStmt) { type = REPEAT; }
+	explicit NonLabelStmt(IfStmt *ifStmt) : ifStmt(ifStmt) { type = T_IF; }
 
-	explicit NonLabelStmt(WhileStmt *whileStmt) : whileStmt(whileStmt) { type = WHILE; }
+	explicit NonLabelStmt(RepeatStmt *repeatStmt) : repeatStmt(repeatStmt) { type = T_REPEAT; }
 
-	explicit NonLabelStmt(ForStmt *forStmt) : forStmt(forStmt) { type = FOR; }
+	explicit NonLabelStmt(WhileStmt *whileStmt) : whileStmt(whileStmt) { type = T_WHILE; }
 
-	explicit NonLabelStmt(CaseStmt *caseStmt) : caseStmt(caseStmt) { type = CASE; }
+	explicit NonLabelStmt(ForStmt *forStmt) : forStmt(forStmt) { type = T_FOR; }
 
-	explicit NonLabelStmt(GotoStmt *gotoStmt) : gotoStmt(gotoStmt) { type = GOTO; }
+	explicit NonLabelStmt(CaseStmt *caseStmt) : caseStmt(caseStmt) { type = T_CASE; }
+
+	explicit NonLabelStmt(GotoStmt *gotoStmt) : gotoStmt(gotoStmt) { type = T_GOTO; }
+
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class AssignStmt : public AbstractStatement {
 public:
-	static const int SIMPLE = 1;
-	static const int ARRAY = 2;
-	static const int RECORD = 3;
+	static const int T_SIMPLE = 1;
+	static const int T_ARRAY = 2;
+	static const int T_RECORD = 3;
 
 	int type{};
 	std::string id;
@@ -465,24 +498,25 @@ public:
 	Expression *index{};
 	std::string recordId;
 
-	AssignStmt(std::string id, Expression *rhs) : id(std::move(id)), rhs(rhs), type(SIMPLE) {}
+	AssignStmt(std::string id, Expression *rhs) : id(std::move(id)), rhs(rhs), type(T_SIMPLE) {}
 
 	AssignStmt(std::string id, Expression *index, Expression *rhs) : id(std::move(id)), rhs(rhs), index(index),
-																	 type(ARRAY) {}
+																	 type(T_ARRAY) {}
 
 	AssignStmt(std::string id, std::string recordId, Expression *rhs) : id(std::move(id)), rhs(rhs),
 																		recordId(std::move(recordId)),
-																		type(RECORD) {}
+																		type(T_RECORD) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ProcStmt : public AbstractStatement {
 public:
-	static const int SIMPLE = 1;
-	static const int SIMPLE_ARGS = 2;
-	static const int SYS_PROC = 3;
-	static const int SYS_PROC_EXPR = 4;
+	static const int T_SIMPLE = 1;
+	static const int T_SIMPLE_ARGS = 2;
+	static const int T_SYS_PROC = 3;
+	static const int T_SYS_PROC_EXPR = 4;
 	//fixme: what's read ??
-	static const int READ = 5;
+	static const int T_READ = 5;
 
 	int type{};
 	std::string procId;
@@ -494,22 +528,23 @@ public:
 	Factor *factor{};
 
 	ProcStmt(int type, const std::string &st) : type(type) {
-		assert(type == SIMPLE || type == SYS_PROC);
-		if (type == SIMPLE)
+		assert(type == T_SIMPLE || type == T_SYS_PROC);
+		if (type == T_SIMPLE)
 			procId = st;
 		else
 			sysProc = st;
 	}
 
 	ProcStmt(std::string procId, ArgsList *argsList) : procId(std::move(procId)), argsList(argsList),
-													   type(SIMPLE_ARGS) {}
+													   type(T_SIMPLE_ARGS) {}
 
 	ProcStmt(std::string sysProc, ExpressionList *expressionList) : sysProc(std::move(sysProc)),
 																	expressionList(expressionList),
-																	type(SYS_PROC_EXPR) {}
+																	type(T_SYS_PROC_EXPR) {}
 
-	explicit ProcStmt(Factor *factor) : factor(factor), type(READ) {}
+	explicit ProcStmt(Factor *factor) : factor(factor), type(T_READ) {}
 
+//	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class IfStmt : public AbstractStatement {
@@ -520,6 +555,7 @@ public:
 
 	IfStmt(Expression *expression, Stmt *stmt, ElseClause *elseClause) : expression(expression), stmt(stmt),
 																		 elseClause(elseClause) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ElseClause : public AbstractStatement {
@@ -527,6 +563,7 @@ public:
 	Stmt *stmt{};
 
 	explicit ElseClause(Stmt *stmt) : stmt(stmt) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class RepeatStmt : public AbstractStatement {
@@ -535,6 +572,7 @@ public:
 	Expression *untilCondition{};
 
 	RepeatStmt(StmtList *stmtList, Expression *untilCondition) : stmtList(stmtList), untilCondition(untilCondition) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class WhileStmt : public AbstractStatement {
@@ -543,6 +581,7 @@ public:
 	Stmt *stmt{};
 
 	WhileStmt(Expression *whileCondition, Stmt *stmt) : whileCondition(whileCondition), stmt(stmt) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class ForStmt : public AbstractStatement {
@@ -556,15 +595,16 @@ public:
 	ForStmt(std::string loopId, Expression *firstBound, Direction *direction, Expression *secondBound, Stmt *stmt)
 			: loopId(std::move(loopId)), firstBound(firstBound), direction(direction), secondBound(secondBound),
 			  stmt(stmt) {}
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class Direction : public AbstractStatement {
 public:
-	static const int TO = 1;
-	static const int DOWNTO = 2;
+	static const int T_TO = 1;
+	static const int T_DOWNTO = 2;
 	int type{};
 
-	explicit Direction(int type) : type(type) { assert(type == TO || type == DOWNTO); }
+	explicit Direction(int type) : type(type) { assert(type == T_TO || type == T_DOWNTO); }
 };
 
 class CaseStmt : public AbstractStatement {
@@ -575,37 +615,33 @@ public:
 	CaseStmt(Expression *expression, CaseExprList *caseExprList) : expression(expression), caseExprList(caseExprList) {}
 };
 
+class CaseExprList : public AbstractStatement {
+public:
+	CaseExprList *preList{};
+	CaseExpr *caseExpr;
+
+	CaseExprList(CaseExprList *preList, CaseExpr *caseExpr) : preList(preList), caseExpr(caseExpr) {}
+};
+
 class CaseExpr : public AbstractStatement {
 public:
-	static const int CONST = 1;
-	static const int ID = 2;
+	static const int T_CONST = 1;
+	static const int T_ID = 2;
 	int type{};
 	ConstValue *constValue{};
 	std::string id;
 	Stmt *stmt;
 
-//	CaseExpr(){}
+	CaseExpr(ConstValue *constValue, Stmt *stmt) : constValue(constValue), stmt(stmt), type(T_CONST) {}
 
-//	CaseExpr(const CaseExpr & caseExpr) : constValue(caseExpr.constValue), stmt(caseExpr.stmt), type(caseExpr.type) {}
-
-	CaseExpr(ConstValue *constValue, Stmt *stmt) : constValue(constValue), stmt(stmt), type(CONST) {}
-
-	CaseExpr(std::string id, Stmt *stmt) : id(std::move(id)), stmt(stmt), type(ID) {}
-};
-
-class CaseExprList : public AbstractStatement {
-public:
-	CaseExprList *preList{};
-	CaseExpr caseExpr;
-
-	CaseExprList(CaseExprList *preList, const CaseExpr &caseExpr) : preList(preList), caseExpr(caseExpr) {}
+	CaseExpr(std::string id, Stmt *stmt) : id(std::move(id)), stmt(stmt), type(T_ID) {}
 };
 
 class GotoStmt : public AbstractStatement {
 public:
-	int address{};
+	ConstValue *address;
 
-	explicit GotoStmt(int addr) : address(addr) {}
+	explicit GotoStmt(const std::string &address) : address(new ConstValue(address, ConstValue::T_INTEGER)) {}
 };
 
 // todo: expression or statement, does it matter?
@@ -619,13 +655,13 @@ public:
 
 class Expression : public AbstractExpression {
 public:
-	static const int EQ = 1;
-	static const int NE = 2;
-	static const int GE = 3;
-	static const int GT = 4;
-	static const int LE = 5;
-	static const int LT = 6;
-	static const int EXPR = 7;
+	static const int T_EQ = 1;
+	static const int T_NE = 2;
+	static const int T_GE = 3;
+	static const int T_GT = 4;
+	static const int T_LE = 5;
+	static const int T_LT = 6;
+	static const int T_EXPR = 7;
 	int type;
 	Expression *expression{};
 	Expr *expr{};
@@ -634,15 +670,16 @@ public:
 		assert(type >= 1 && type <= 6);
 	}
 
-	explicit Expression(Expr *expr) : expr(expr), type(EXPR) {}
+	explicit Expression(Expr *expr) : expr(expr), type(T_EXPR) {}
+	llvm::Value* codeGen(CodeGenContext& context);
 };
 
 class Expr : public AbstractExpression {
 public:
-	static const int PLUS = 1;
-	static const int MINUS = 2;
-	static const int OR = 3;
-	static const int TERM = 4;
+	static const int T_PLUS = 1;
+	static const int T_MINUS = 2;
+	static const int T_OR = 3;
+	static const int T_TERM = 4;
 
 	int type;
 	Expr *expr{};
@@ -652,16 +689,18 @@ public:
 		assert(type >= 1 && type <= 3);
 	}
 
-	explicit Expr(Term *term) : term(term), type(TERM) {}
+	explicit Expr(Term *term) : term(term), type(T_TERM) {}
+	llvm::Value* codeGen(CodeGenContext& context);
+
 };
 
 class Term : public AbstractExpression {
 public:
-	static const int MUL = 1;
-	static const int DIV = 2;
-	static const int MOD = 3;
-	static const int AND = 4;
-	static const int FACTOR = 5;
+	static const int T_MUL = 1;
+	static const int T_DIV = 2;
+	static const int T_MOD = 3;
+	static const int T_AND = 4;
+	static const int T_FACTOR = 5;
 
 	int type;
 	Term *term{};
@@ -671,21 +710,22 @@ public:
 		assert(type >= 1 && type <= 4);
 	}
 
-	explicit Term(Factor *factor) : factor(factor), type(FACTOR) {}
+	explicit Term(Factor *factor) : factor(factor), type(T_FACTOR) {}
+	llvm::Value* codeGen(CodeGenContext& context);
 };
 
 class Factor : public AbstractExpression {
 public:
-	static const int NAME = 1;
-	static const int NAME_ARGS = 2;
-	static const int SYS_FUNCT = 3;
-	static const int SYS_FUNCT_ARGS = 4;
-	static const int CONST = 5;
-	static const int EXPR = 6;
-	static const int NOT_FACTOR = 7;
-	static const int MINUS_FACTOR = 8;
-	static const int ID_EXPR = 9;
-	static const int ID_DOT_ID = 10;
+	static const int T_NAME = 1;
+	static const int T_NAME_ARGS = 2;
+	static const int T_SYS_FUNCT = 3;
+	static const int T_SYS_FUNCT_ARGS = 4;
+	static const int T_CONST = 5;
+	static const int T_EXPR = 6;
+	static const int T_NOT_FACTOR = 7;
+	static const int T_MINUS_FACTOR = 8;
+	static const int T_ID_EXPR = 9;
+	static const int T_ID_DOT_ID = 10;
 
 	int type;
 	std::string name;
@@ -698,32 +738,33 @@ public:
 	std::string recordId;
 
 	Factor(int type, const std::string &st) : type(type) {
-		assert(type == NAME || type == SYS_FUNCT);
-		if (type == NAME)
+		assert(type == T_NAME || type == T_SYS_FUNCT);
+		if (type == T_NAME)
 			name = st;
 		else
 			sysFunction = st;
 	}
 
 	Factor(int type, const std::string &st, ArgsList *argsList) : type(type), argsList(argsList) {
-		assert(type == NAME_ARGS || type == SYS_FUNCT_ARGS);
-		if (type == NAME_ARGS)
+		assert(type == T_NAME_ARGS || type == T_SYS_FUNCT_ARGS);
+		if (type == T_NAME_ARGS)
 			name = st;
 		else
 			sysFunction = st;
 	}
 
-	explicit Factor(ConstValue *constValue) : constValue(constValue), type(CONST) {}
+	explicit Factor(ConstValue *constValue) : constValue(constValue), type(T_CONST) {}
 
-	explicit Factor(Expression *expression) : expression(expression), type(EXPR) {}
+	explicit Factor(Expression *expression) : expression(expression), type(T_EXPR) {}
 
 	Factor(int type, Factor *factor) : type(type), factor(factor) {
-		assert(type == NOT_FACTOR || type == MINUS_FACTOR);
+		assert(type == T_NOT_FACTOR || type == T_MINUS_FACTOR);
 	}
 
-	Factor(std::string id, Expression *expression) : expression(expression), id(std::move(id)), type(ID_EXPR) {}
+	Factor(std::string id, Expression *expression) : expression(expression), id(std::move(id)), type(T_ID_EXPR) {}
 
-	Factor(std::string id, std::string recordId) : id(std::move(id)), recordId(std::move(recordId)), type(ID_DOT_ID) {}
+	Factor(std::string id, std::string recordId) : id(std::move(id)), recordId(std::move(recordId)), type(T_ID_DOT_ID) {}
+	llvm::Value* codeGen(CodeGenContext& context);
 };
 
 class ArgsList : public AbstractStatement {

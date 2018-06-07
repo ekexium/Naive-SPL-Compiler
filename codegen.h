@@ -12,25 +12,33 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/IRBuilder.h>
 #include "AST.h"
 
-static llvm::LLVMContext context;
+static llvm::LLVMContext MyContext;
+class Node;
 
 class CodeGenBlock {
 public:
     llvm::BasicBlock *block;
+    CodeGenBlock *preBlock;
+    llvm::Function * function;
     std::map<std::string , llvm::Value*> locals;
+    std::map<std::string, TypeDecl*> types;
 
-    explicit CodeGenBlock(llvm::BasicBlock * block) : block(block) {}
+    explicit CodeGenBlock(llvm::BasicBlock * block, CodeGenBlock * preBlock) : block(block), preBlock(preBlock) {}
 };
 
 class CodeGenContext {
-    std::stack<CodeGenBlock *> blocks;
 public:
+    std::stack<CodeGenBlock *> blocks;
     llvm::Module * module;
-    CodeGenContext(){ module = new llvm::Module("main", context);}
-    void pushBlock(llvm::BasicBlock *block) { blocks.push(new CodeGenBlock(block)); }
+    CodeGenContext(){ module = new llvm::Module("main", MyContext); }
+    void pushBlock(llvm::BasicBlock *block) { CodeGenBlock *top = blocks.top(); blocks.push(new CodeGenBlock(block, top)); }
     void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
-    void generateCode(Node& root);
+    std::map<std::string , llvm::Value*> local() { return blocks.top()->locals; };
+    std::map<std::string, TypeDecl*> type() { return blocks.top()->types; };
+    llvm::BasicBlock *currentBlock() { return blocks.top()->block; }
+    void generateCode(Node* root);
 };
 #endif //SPLC_CODEGEN_H
