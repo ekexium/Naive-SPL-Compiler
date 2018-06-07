@@ -9,41 +9,41 @@
 
 using namespace llvm;
 
-llvm::Value * Program::codeGen(CodeGenContext &context) {
-    std::vector<Type*> argTypes;
-    FunctionType *ftype = FunctionType::get(Type::getVoidTy(MyContext), makeArrayRef(argTypes), false);
-    Function * mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", context.module);
-    BasicBlock *bblock = BasicBlock::Create(MyContext, "entry", mainFunction, 0);
+llvm::Value *Program::codeGen(CodeGenContext &context) {
+//    std::vector<Type*> argTypes;
+//    FunctionType *ftype = FunctionType::get(Type::getVoidTy(MyContext), makeArrayRef(argTypes), false);
+//    Function * mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", context.module);
+//    BasicBlock *bblock = BasicBlock::Create(MyContext, "entry", mainFunction, 0);
     /* Push a new variable/block context */
-    context.pushBlock(bblock);
-    context.blocks.top()->function = mainFunction;
-    if(routine)routine->codeGen(context); // Null ???
-    ReturnInst::Create(MyContext, bblock);
-    context.popBlock();
+//    context.pushBlock(bblock);
+//    context.blocks.top()->function = mainFunction;
+    if (routine)routine->codeGen(context); // Null ???
+//    ReturnInst::Create(MyContext, bblock);
+//    context.popBlock();
     return nullptr;
 }
 
-llvm::Value * Routine::codeGen(CodeGenContext &context) {
+llvm::Value *Routine::codeGen(CodeGenContext &context) {
     routineHead->codeGen(context);
     routineBody->codeGen(context);
     return nullptr;
 }
 
-llvm::Value * RoutineHead::codeGen(CodeGenContext &context) {
-    if(labelPart) labelPart->codeGen(context);
-    if(constPart) constPart->codeGen(context);
-    if(typePart) typePart->codeGen(context);
-    if(varPart) varPart->codeGen(context);
+llvm::Value *RoutineHead::codeGen(CodeGenContext &context) {
+    if (labelPart) labelPart->codeGen(context);
+    if (constPart) constPart->codeGen(context);
+    if (typePart) typePart->codeGen(context);
+    if (varPart) varPart->codeGen(context);
     routinePart->codeGen(context);
     return nullptr;
 }
 
-llvm::Value * ConstPart::codeGen(CodeGenContext &context) {
-    if(constExprList) return constExprList->codeGen(context);
+llvm::Value *ConstPart::codeGen(CodeGenContext &context) {
+    if (constExprList) return constExprList->codeGen(context);
     return nullptr;
 }
 
-static Type * typeOf(const int type) {
+static Type *typeOf(const int type) {
     switch (type) {
         case ConstValue::T_INTEGER:
             return Type::getInt64Ty(MyContext);
@@ -58,14 +58,14 @@ static Type * typeOf(const int type) {
     }
 }
 
-llvm::Value * ConstExprList::codeGen(CodeGenContext &context) {
-    if(preList) preList->codeGen(context); //顺序？从前往后？从后往前？
+llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
+    if (preList) preList->codeGen(context); //顺序？从前往后？从后往前？
     AllocaInst *alloc = new AllocaInst(typeOf(value->type), 1, name, context.currentBlock()); // 那个1是干什么的呢
     context.local()[name] = alloc;
     new StoreInst(value->codeGen(context), context.local()[name], false, context.currentBlock());
 }
 
-llvm::Value * ConstValue::codeGen(CodeGenContext &context) {
+llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
     switch (type) {
         case ConstValue::T_INTEGER:
             return ConstantInt::get(Type::getInt64Ty(MyContext), std::stoi(value), true); // unsigned???
@@ -80,57 +80,74 @@ llvm::Value * ConstValue::codeGen(CodeGenContext &context) {
     }
 }
 
-llvm::Value * TypePart::codeGen(CodeGenContext &context) {
-    return typeDeclList->codeGen(context);
+llvm::Value *TypePart::codeGen(CodeGenContext &context) {
+    if (typeDeclList) return typeDeclList->codeGen(context);
+    return nullptr;
 }
 
-llvm::Value * TypeDeclList::codeGen(CodeGenContext &context) {
-    preList->codeGen(context);
+llvm::Value *TypeDeclList::codeGen(CodeGenContext &context) {
+    if (preList)preList->codeGen(context);
     return typeDefinition->codeGen(context);
 }
 
-llvm::Value * TypeDefinition::codeGen(CodeGenContext &context){
+llvm::Value *TypeDefinition::codeGen(CodeGenContext &context) {
     context.type()[name] = typeDecl; //需要查找已经有了么
     return nullptr;
 }
 
-llvm::Value * VarPart::codeGen(CodeGenContext &context) {
-    return varDeclList->codeGen(context);
+llvm::Value *VarPart::codeGen(CodeGenContext &context) {
+    if (varDeclList) {
+        return varDeclList->codeGen(context);
+    }
+    return nullptr;
 }
 
-llvm::Value * VarDeclList::codeGen(CodeGenContext &context) {
-    if(preList) preList->codeGen(context);//顺序？从前往后？从后往前？
+llvm::Value *VarDeclList::codeGen(CodeGenContext &context) {
+    if (preList) preList->codeGen(context);//顺序？从前往后？从后往前？
     return varDecl->codeGen(context);
 }
 
-llvm::Value * VarDecl::codeGen(CodeGenContext &context) {
-    NameList * n = nameList;
+llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
+    NameList *n = nameList;
     while (n) {
         // how to get type
-        AllocaInst *alloc = new AllocaInst(typeDecl->getType(context), 1, n->name, context.currentBlock()); // 那个1是干什么的呢
+        llvm::Type *t = typeDecl->getType(context);
+        if (!t) {
+            std::cout << "Error: undefined type." << std::endl;
+            exit(1);
+//            return nullptr;
+        }
+        AllocaInst *alloc = new AllocaInst(t, 1, n->name, context.currentBlock()); // 那个1是干什么的呢
         context.local()[n->name] = alloc;
         n = n->nameList;
     }
 }
 
-llvm::Type * TypeDecl::getType(CodeGenContext & context) {
-    if(type == T_RECORD_TYPE_DECLARE) return simpleTypeDecl->getType(context);
-    else if(type == T_ARRAY_TYPE_DECLARE) return arrayTypeDecl->getType(context);
-    else if(type == T_RECORD_TYPE_DECLARE) return recordTypeDecl->getType(context);
+llvm::Type *TypeDecl::getType(CodeGenContext &context) {
+    if (type == T_SIMPLE_TYPE_DECLARE) return simpleTypeDecl->getType(context);
+    else if (type == T_ARRAY_TYPE_DECLARE) return arrayTypeDecl->getType(context);
+    else if (type == T_RECORD_TYPE_DECLARE) return recordTypeDecl->getType(context);
     return nullptr;
 };
 
-llvm::Type * SimpleTypeDecl::getType(CodeGenContext & context) {
+llvm::Type *SimpleTypeDecl::getType(CodeGenContext &context) {
     switch (type) {
         case T_SYS_TYPE:
-            if(sysType == "boolean") return llvm::Type::getInt1Ty(MyContext);
-            else if(sysType == "char") return llvm::Type::getInt1Ty(MyContext);
-            else if(sysType == "integer") return llvm::Type::getInt64Ty(MyContext);
+            if (sysType == "boolean") return llvm::Type::getInt1Ty(MyContext);
+            else if (sysType == "char") return llvm::Type::getInt1Ty(MyContext);
+            else if (sysType == "integer") return llvm::Type::getInt64Ty(MyContext);
             else return llvm::Type::getDoubleTy(MyContext);
         case T_TYPE_NAME: {
+            if (name == "boolean") return llvm::Type::getInt1Ty(MyContext);
+            else if (name == "char") return llvm::Type::getInt1Ty(MyContext);
+            else if (name == "integer") return llvm::Type::getInt64Ty(MyContext);
+//            else return llvm::Type::getDoubleTy(MyContext);
             CodeGenBlock *p = context.blocks.top();
             while (p) {
-                if (p->types.find(name) == p->types.end()) p = p->preBlock;
+                if (p->types.find(name) == p->types.end()) {
+                    p = p->preBlock;
+                    continue;
+                }
                 return p->types.at(name)->getType(context);
             }
             return nullptr;
@@ -141,62 +158,65 @@ llvm::Type * SimpleTypeDecl::getType(CodeGenContext & context) {
     return nullptr;
 };
 
-llvm::Type * ArrayTypeDecl::getType(CodeGenContext & context) {
+llvm::Type *ArrayTypeDecl::getType(CodeGenContext &context) {
     return nullptr;
 }
 
-llvm::Type * RecordTypeDecl::getType(CodeGenContext &context) {
+llvm::Type *RecordTypeDecl::getType(CodeGenContext &context) {
     return nullptr;
 }
 
-llvm::Value * RoutinePart::codeGen(CodeGenContext &context) {
-    if(type == T_ROUTINE_FUNC || type == T_ROUTINE_PROC) return routinePart->codeGen(context);
-    if(type == T_EMPTY)
+llvm::Value *RoutinePart::codeGen(CodeGenContext &context) {
+    if (type == T_ROUTINE_FUNC || type == T_ROUTINE_PROC) return routinePart->codeGen(context);
+    if (type == T_EMPTY)
         return nullptr;
-    if(type == T_PROC) return procedureDecl->codeGen(context);
-    if(type == T_FUNC) return functionDecl->codeGen(context);
+    if (type == T_PROC) return procedureDecl->codeGen(context);
+    if (type == T_FUNC) return functionDecl->codeGen(context);
     return nullptr;
 }
 
-llvm::Value * FunctionDecl::codeGen(CodeGenContext &context) {
-    std::vector<Type*> argTypes;
-    ParaDeclList * p = functionHead->parameters->paraDeclList;
+llvm::Value *FunctionDecl::codeGen(CodeGenContext &context) {
+    std::vector<Type *> argTypes;
+    ParaDeclList *p = functionHead->parameters->paraDeclList;
     while (p) {
         argTypes.push_back(p->paraTypeList->typeDecl->getType(context));
         p = p->paraDeclList;
     }
     FunctionType *ftype = FunctionType::get(functionHead->returnType->getType(context), makeArrayRef(argTypes), false);
-    Function * function = Function::Create(ftype, llvm::GlobalValue::InternalLinkage, functionHead->name, context.module);
+    Function *function = Function::Create(ftype, llvm::GlobalValue::InternalLinkage, functionHead->name,
+                                          context.module);
     BasicBlock *bblock = BasicBlock::Create(MyContext, "entry", function, nullptr);
     context.pushBlock(bblock);
     context.blocks.top()->function = function;
     p = functionHead->parameters->paraDeclList;
-    while (p){
+    while (p) {
         p->codeGen(context);
         p = p->paraDeclList;
     }
 
-    AllocaInst *alloc = new AllocaInst(functionHead->returnType->getType(context), 1, functionHead->name, context.currentBlock()); // 那个1是干什么的呢
+    AllocaInst *alloc = new AllocaInst(functionHead->returnType->getType(context), 1, functionHead->name,
+                                       context.currentBlock()); // 那个1是干什么的呢
     context.local()[functionHead->name] = alloc;
     subRoutine->codeGen(context);
     context.popBlock();
     return function;
 }
 
-llvm::Value * ProcedureDecl::codeGen(CodeGenContext &context) {
-    std::vector<Type*> argTypes;
-    ParaDeclList * p = procedureHead->parameters->paraDeclList;
+llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
+    std::vector<Type *> argTypes;
+    ParaDeclList *p = procedureHead->parameters->paraDeclList;
     while (p) {
         argTypes.push_back(p->paraTypeList->typeDecl->getType(context));
         p = p->paraDeclList;
     }
     FunctionType *ftype = FunctionType::get(Type::getVoidTy(MyContext), makeArrayRef(argTypes), false);
-    Function * function = Function::Create(ftype, llvm::GlobalValue::InternalLinkage, procedureHead->name, context.module);
+    Function *function = Function::Create(ftype, llvm::GlobalValue::InternalLinkage, procedureHead->name,
+                                          context.module);
     BasicBlock *bblock = BasicBlock::Create(MyContext, "entry", function, nullptr);
     context.pushBlock(bblock);
     context.blocks.top()->function = function;
     p = procedureHead->parameters->paraDeclList;
-    while (p){
+    while (p) {
         p->codeGen(context);
         p = p->paraDeclList;
     }
@@ -205,23 +225,25 @@ llvm::Value * ProcedureDecl::codeGen(CodeGenContext &context) {
     return function;
 }
 
-llvm::Value * SubRoutine::codeGen(CodeGenContext &context) {
+llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
     routineHead->codeGen(context);
     return routineBody->codeGen(context);
 };
 
-llvm::Value * ParaDeclList::codeGen(CodeGenContext &context) {
-    if(paraTypeList->type == ParaTypeList::T_VAL) {
-        NameList * n = paraTypeList->valParaList->nameList;
+llvm::Value *ParaDeclList::codeGen(CodeGenContext &context) {
+    if (paraTypeList->type == ParaTypeList::T_VAL) {
+        NameList *n = paraTypeList->valParaList->nameList;
         while (n) {
-            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 1, n->name, context.currentBlock()); // 那个1是干什么的呢
+            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 1, n->name,
+                                               context.currentBlock()); // 那个1是干什么的呢
             context.local()[n->name] = alloc;
             n = n->nameList;
         }
     } else {
-        NameList * n = paraTypeList->varParaList->nameList;
+        NameList *n = paraTypeList->varParaList->nameList;
         while (n) {
-            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 1, n->name, context.currentBlock()); // 那个1是干什么的呢
+            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 1, n->name,
+                                               context.currentBlock()); // 那个1是干什么的呢
             context.local()[n->name] = alloc;
             n = n->nameList;
         }
@@ -229,26 +251,26 @@ llvm::Value * ParaDeclList::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
-llvm::Value * RoutineBody::codeGen(CodeGenContext &context) {
+llvm::Value *RoutineBody::codeGen(CodeGenContext &context) {
     return compoundStmt->codeGen(context);
 }
 
-llvm::Value * CompoundStmt::codeGen(CodeGenContext &context) {
+llvm::Value *CompoundStmt::codeGen(CodeGenContext &context) {
     return stmtList->codeGen(context);
 }
 
-llvm::Value * StmtList::codeGen(CodeGenContext &context) {
-    preList->codeGen(context);
-    stmt->codeGen(context);
+llvm::Value *StmtList::codeGen(CodeGenContext &context) {
+    if (preList) preList->codeGen(context);
+    if (stmt) stmt->codeGen(context);
     return nullptr;
 }
 
-llvm::Value * Stmt::codeGen(CodeGenContext &context) {
+llvm::Value *Stmt::codeGen(CodeGenContext &context) {
     nonLabelStmt->codeGen(context);
     return nullptr;
 }
 
-llvm::Value * NonLabelStmt::codeGen(CodeGenContext &context) {
+llvm::Value *NonLabelStmt::codeGen(CodeGenContext &context) {
     switch (type) {
         case T_ASSIGN:
             return assignStmt->codeGen(context);
@@ -273,68 +295,69 @@ llvm::Value * NonLabelStmt::codeGen(CodeGenContext &context) {
     }
 }
 
-llvm::Value * AssignStmt::codeGen(CodeGenContext &context) {
-    CodeGenBlock * b = context.blocks.top();
+llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
+    CodeGenBlock *b = context.blocks.top();
     while (b) {
-        if(b->locals.find(id) == b->locals.end()) b = b->preBlock;
+        if (b->locals.find(id) == b->locals.end()) b = b->preBlock;
         return new llvm::StoreInst(rhs->codeGen(context), b->locals[id], false, context.currentBlock());
     }
     return nullptr;
 }
 
-llvm::Value * IfStmt::codeGen(CodeGenContext &context) {
-    Value * condition = expression->codeGen(context);
+llvm::Value *IfStmt::codeGen(CodeGenContext &context) {
+    Value *condition = expression->codeGen(context);
     BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", context.blocks.top()->function);
     BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", context.blocks.top()->function);
     BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", context.blocks.top()->function);
-    llvm::Instruction* ret = llvm::BranchInst::Create(btrue,bfalse,condition,context.currentBlock());
+    llvm::Instruction *ret = llvm::BranchInst::Create(btrue, bfalse, condition, context.currentBlock());
     context.pushBlock(btrue);
 
     stmt->codeGen(context);
-    llvm::BranchInst::Create(bmerge,context.currentBlock());
+    llvm::BranchInst::Create(bmerge, context.currentBlock());
     context.popBlock();
     context.pushBlock(bfalse);
-    if(elseClause)
+    if (elseClause)
         elseClause->codeGen(context);
-    llvm::BranchInst::Create(bmerge,context.currentBlock());
+    llvm::BranchInst::Create(bmerge, context.currentBlock());
     context.popBlock();
     context.pushBlock(bmerge);
     context.popBlock();//??
     return ret;
 }
 
-llvm::Value * ElseClause::codeGen(CodeGenContext &context) {
-    return stmt->codeGen(context);
+llvm::Value *ElseClause::codeGen(CodeGenContext &context) {
+    if (stmt) return stmt->codeGen(context);
+    else return nullptr;
 }
 
-llvm::Value * WhileStmt::codeGen(CodeGenContext &context) {
+llvm::Value *WhileStmt::codeGen(CodeGenContext &context) {
     BasicBlock *sloop = BasicBlock::Create(MyContext, "startloop", context.blocks.top()->function);
     BasicBlock *bloop = BasicBlock::Create(MyContext, "loopStmt", context.blocks.top()->function);
     BasicBlock *bexit = BasicBlock::Create(MyContext, "eixtStmt", context.blocks.top()->function);
 
-    llvm::BranchInst::Create(sloop,context.currentBlock());
+    llvm::BranchInst::Create(sloop, context.currentBlock());
     context.pushBlock(sloop);
-    Value* test = whileCondition->codeGen( context );
-    llvm::Instruction *ret = llvm::BranchInst::Create(bloop,bexit,test,context.currentBlock());
+    Value *test = whileCondition->codeGen(context);
+    llvm::Instruction *ret = llvm::BranchInst::Create(bloop, bexit, test, context.currentBlock());
     context.popBlock();
     context.pushBlock(bloop);
     stmt->codeGen(context);
-    llvm::BranchInst::Create(sloop,context.currentBlock());
+    llvm::BranchInst::Create(sloop, context.currentBlock());
     context.popBlock();
     context.pushBlock(bexit);
     context.popBlock(); // ??
     return ret;
 }
 
-llvm::Value* RepeatStmt::codeGen(CodeGenContext& context) {
+llvm::Value *RepeatStmt::codeGen(CodeGenContext &context) {
     BasicBlock *bloop = BasicBlock::Create(MyContext, "loopStmt", context.blocks.top()->function);
     BasicBlock *bexit = BasicBlock::Create(MyContext, "eixtStmt", context.blocks.top()->function);
-    llvm::BranchInst::Create(bloop,context.currentBlock());
+    llvm::BranchInst::Create(bloop, context.currentBlock());
 
     context.pushBlock(bloop);
     stmtList->codeGen(context);
-    Value* test = untilCondition->codeGen( context );
-    llvm::Instruction *ret = llvm::BranchInst::Create(bexit,bloop,test,context.currentBlock());
+    Value *test = untilCondition->codeGen(context);
+    llvm::Instruction *ret = llvm::BranchInst::Create(bexit, bloop, test, context.currentBlock());
     context.popBlock();
 
     context.pushBlock(bexit);
@@ -342,88 +365,91 @@ llvm::Value* RepeatStmt::codeGen(CodeGenContext& context) {
     return ret;
 }
 
-llvm::Value* Expression::codeGen(CodeGenContext& context) {
-    if(type == T_EXPR){
+llvm::Value *Expression::codeGen(CodeGenContext &context) {
+    if (type == T_EXPR) {
         return expr->codeGen(context);
     } else {
-        Value * op1_val = expression->codeGen(context);
-        Value * op2_val = expr->codeGen(context);
+        Value *op1_val = expression->codeGen(context);
+        Value *op2_val = expr->codeGen(context);
         switch (type) {
             case T_EQ:
-                return llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
-                                                    op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
+                                             op1_val, op2_val, "", context.currentBlock());
             case T_NE:
-                return  llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_NE,
-                                               op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_NE,
+                                             op1_val, op2_val, "", context.currentBlock());
             case T_LT:
-                return  llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLT,
-                                               op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLT,
+                                             op1_val, op2_val, "", context.currentBlock());
             case T_GT:
-                return  llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGT,
-                                               op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGT,
+                                             op1_val, op2_val, "", context.currentBlock());
             case T_LE:
-                return  llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLE,
-                                               op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLE,
+                                             op1_val, op2_val, "", context.currentBlock());
             case T_GE:
-                return  llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGE,
-                                               op1_val, op2_val, "", context.currentBlock());
+                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGE,
+                                             op1_val, op2_val, "", context.currentBlock());
             default:
                 return nullptr;
         }
     }
 }
 
-llvm::Value * Expr::codeGen(CodeGenContext &context) {
-    if(type == T_TERM) return term->codeGen(context);
-    Value * op1_val = expr->codeGen(context);
-    Value * op2_val = term->codeGen(context);
-    switch(type){
+llvm::Value *Expr::codeGen(CodeGenContext &context) {
+    if (type == T_TERM) return term->codeGen(context);
+    Value *op1_val = expr->codeGen(context);
+    Value *op2_val = term->codeGen(context);
+    switch (type) {
         case T_PLUS:
-            return llvm::BinaryOperator::Create( llvm::Instruction::FAdd,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::FAdd,
+                                                op1_val, op2_val, "", context.currentBlock());
         case T_MINUS:
-            return llvm::BinaryOperator::Create( llvm::Instruction::FSub,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::FSub,
+                                                op1_val, op2_val, "", context.currentBlock());
         case T_OR:
-            return llvm::BinaryOperator::Create( llvm::Instruction::Or,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::Or,
+                                                op1_val, op2_val, "", context.currentBlock());
         default:
             return nullptr;
     }
 }
 
-llvm::Value * Term::codeGen(CodeGenContext &context) {
-    if(type == T_FACTOR) return factor->codeGen(context);
-    Value * op1_val = term->codeGen(context);
-    Value * op2_val = factor->codeGen(context);
-    switch(type) {
+llvm::Value *Term::codeGen(CodeGenContext &context) {
+    if (type == T_FACTOR) return factor->codeGen(context);
+    Value *op1_val = term->codeGen(context);
+    Value *op2_val = factor->codeGen(context);
+    switch (type) {
         case T_MUL:
-            return llvm::BinaryOperator::Create( llvm::Instruction::FMul,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::FMul,
+                                                op1_val, op2_val, "", context.currentBlock());
         case T_DIV:
-            return llvm::BinaryOperator::Create( llvm::Instruction::SDiv,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::SDiv,
+                                                op1_val, op2_val, "", context.currentBlock());
         case T_AND:
-            return llvm::BinaryOperator::Create( llvm::Instruction::And,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::And,
+                                                op1_val, op2_val, "", context.currentBlock());
         case T_MOD:
-            return llvm::BinaryOperator::Create( llvm::Instruction::SRem,
-                                                 op1_val, op2_val, "", context.currentBlock());
+            return llvm::BinaryOperator::Create(llvm::Instruction::SRem,
+                                                op1_val, op2_val, "", context.currentBlock());
         default:
             return nullptr;
     }
 }
 
-llvm::Value * Factor::codeGen(CodeGenContext &context) {
+llvm::Value *Factor::codeGen(CodeGenContext &context) {
     switch (type) {
         case T_NAME: {
             auto p = context.blocks.top();
             while (p) {
-                if (p->locals.find(name) == p->locals.end()) p = p->preBlock;
+                if (p->locals.find(name) == p->locals.end()) {
+                    p = p->preBlock;
+                    continue;
+                }
                 return new llvm::LoadInst(p->locals[name], "", false, context.currentBlock()); // ??
             }
             std::cout << "Undefined variable." << std::endl;
-            return nullptr;
+            exit(1);
         }
         case T_CONST:
             return constValue->codeGen(context);
@@ -431,47 +457,52 @@ llvm::Value * Factor::codeGen(CodeGenContext &context) {
             return expression->codeGen(context);
         case T_NOT_FACTOR:
             return nullptr; // not finished
+        default:
+            return nullptr;
     }
 }
 
-llvm::Value* ForStmt::codeGen(CodeGenContext& context) {
+llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
     BasicBlock *sloop = BasicBlock::Create(MyContext, "startloop", context.blocks.top()->function);
     BasicBlock *bloop = BasicBlock::Create(MyContext, "loopStmt", context.blocks.top()->function);
     BasicBlock *bexit = BasicBlock::Create(MyContext, "eixtStmt", context.blocks.top()->function);
 //  initial for
-    AssignStmt* initial = new AssignStmt(loopId, firstBound);
+    AssignStmt *initial = new AssignStmt(loopId, firstBound);
     initial->codeGen(context);
-    llvm::BranchInst::Create(sloop,context.currentBlock());
+    llvm::BranchInst::Create(sloop, context.currentBlock());
 //  for test
     context.pushBlock(sloop);
-    Factor * f = new Factor(Factor::T_NAME, loopId);
-    Value* test = llvm::CmpInst::Create( llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
-                                         f->codeGen(context), secondBound->codeGen(context), "", context.currentBlock());
-    llvm::Instruction *ret = llvm::BranchInst::Create(bexit,bloop,test,context.currentBlock());
+    Factor *f = new Factor(Factor::T_NAME, loopId);
+    Value *test = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
+                                        f->codeGen(context), secondBound->codeGen(context), "", context.currentBlock());
+    llvm::Instruction *ret = llvm::BranchInst::Create(bexit, bloop, test, context.currentBlock());
     context.popBlock();
 
     context.pushBlock(bloop);
     stmt->codeGen(context);
 //update
-    Factor * f1;
+    Factor *f1;
     auto int1 = new ConstValue("1", ConstValue::T_INTEGER);
-    Value * update;
+    Value *update;
     if (direction->type == Direction::T_TO) {
         f1 = new Factor(Factor::T_NAME, loopId);
-        update = llvm::BinaryOperator::Create( llvm::Instruction::Add,
-                                      f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
-    }
-    else{
+        update = llvm::BinaryOperator::Create(llvm::Instruction::Add,
+                                              f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
+    } else {
         f1 = new Factor(Factor::T_NAME, loopId);
-        update = llvm::BinaryOperator::Create( llvm::Instruction::Sub,
-                                      f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
+        update = llvm::BinaryOperator::Create(llvm::Instruction::Sub,
+                                              f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
     }
-    CodeGenBlock * b = context.blocks.top();
+    CodeGenBlock *b = context.blocks.top();
     while (b) {
-        if(b->locals.find(loopId) == b->locals.end()) b = b->preBlock;
+        if (b->locals.find(loopId) == b->locals.end()) {
+            b = b->preBlock;
+            continue;
+        }
         new llvm::StoreInst(update, b->locals[loopId], false, context.currentBlock());
+        break;
     }
-    llvm::BranchInst::Create(sloop,context.currentBlock());
+    llvm::BranchInst::Create(sloop, context.currentBlock());
     context.popBlock();
 
     context.pushBlock(bexit);
