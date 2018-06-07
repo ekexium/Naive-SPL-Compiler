@@ -10,3 +10,7 @@ CTestTestfile.cmake
 cmake-build-debug
 .idea
 .DS_Store
+output
+output.s
+test.out
+test.s

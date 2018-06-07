@@ -38,6 +38,9 @@ public:
     llvm::Module *module;
 
     CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
+    ~CodeGenContext() {
+        delete module;
+    }
 
     void pushBlock(llvm::BasicBlock *block) {
         CodeGenBlock *top = nullptr;

@@ -549,7 +549,7 @@ public:
 
 	explicit ProcStmt(Factor *factor) : factor(factor), type(T_READ) {}
 
-//	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value * codeGen(CodeGenContext &context);
 };
 
 class IfStmt : public AbstractStatement {

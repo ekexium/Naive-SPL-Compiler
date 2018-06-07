@@ -46,7 +46,7 @@ llvm::Value *ConstPart::codeGen(CodeGenContext &context) {
 static Type *typeOf(const int type) {
     switch (type) {
         case ConstValue::T_INTEGER:
-            return Type::getInt64Ty(MyContext);
+            return Type::getInt32Ty(MyContext);
         case ConstValue::T_CHAR:
             return Type::getInt8Ty(MyContext); // No char?
         case ConstValue::T_REAL:
@@ -71,7 +71,7 @@ llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
 llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
     switch (type) {
         case ConstValue::T_INTEGER:
-            return ConstantInt::get(Type::getInt64Ty(MyContext), std::stoi(value), true); // unsigned???
+            return ConstantInt::get(Type::getInt32Ty(MyContext), std::stoi(value), true); // unsigned???
         case ConstValue::T_CHAR:
             return ConstantInt::get(Type::getInt8Ty(MyContext), value[0], true);
         case ConstValue::T_REAL:
@@ -122,9 +122,9 @@ llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
         }
         AllocaInst *alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
         context.local()[n->name] = alloc;
-        if(n->name == "j"){
-            std::cout << "VarDecl.j" << std::endl;
-        }
+//        if(n->name == "j"){
+//            std::cout << "VarDecl.j" << std::endl;
+//        }
         n = n->nameList;
     }
     return nullptr;
@@ -142,12 +142,12 @@ llvm::Type *SimpleTypeDecl::getType(CodeGenContext &context) {
         case T_SYS_TYPE:
             if (sysType == "boolean") return llvm::Type::getInt1Ty(MyContext);
             else if (sysType == "char") return llvm::Type::getInt1Ty(MyContext);
-            else if (sysType == "integer") return llvm::Type::getInt64Ty(MyContext);
+            else if (sysType == "integer") return llvm::Type::getInt32Ty(MyContext);
             else return llvm::Type::getDoubleTy(MyContext);
         case T_TYPE_NAME: {
             if (name == "boolean") return llvm::Type::getInt1Ty(MyContext);
             else if (name == "char") return llvm::Type::getInt1Ty(MyContext);
-            else if (name == "integer") return llvm::Type::getInt64Ty(MyContext);
+            else if (name == "integer") return llvm::Type::getInt32Ty(MyContext);
 //            else return llvm::Type::getDoubleTy(MyContext);
             CodeGenBlock *p = context.blocks.top();
             while (p) {
@@ -316,6 +316,51 @@ llvm::Value *NonLabelStmt::codeGen(CodeGenContext &context) {
         default:
             return nullptr;
     }
+}
+
+void getPrintArgs(std::vector<llvm::Value *> & printf_args, std::string & printf_format, ArgsList * p, CodeGenContext &context){
+    if(p) {
+        if(p->preList) getPrintArgs(printf_args, printf_format, p->preList, context);
+        auto arg_val = p->expression->codeGen(context);
+        if (arg_val->getType() == llvm::Type::getInt32Ty(MyContext)) {
+            printf_format += "%d";
+            std::cout << "SysFuncCall write variable previous name" << arg_val->getName().str() << std::endl;
+            printf_args.push_back(arg_val);
+        } else if (arg_val->getType()->isDoubleTy() /*== llvm::Type::getDoubleTy(llvm::getGlobalContext())*/) {
+            printf_format += "%lf";
+            printf_args.push_back(arg_val);
+        } else if (arg_val->getType() == llvm::Type::getInt8PtrTy(MyContext)) {
+            assert("print string" == "not implemented");
+        }
+    }
+}
+
+llvm::Value *ProcStmt::codeGen(CodeGenContext &context) {
+    std::string printf_format;
+    std::vector<llvm::Value *> printf_args;
+
+    ArgsList * p = argsList;
+
+    getPrintArgs(printf_args, printf_format, p, context);
+
+    std::cout << printf_format << std::endl;
+
+//    if (writeln)
+    printf_format += "\n";
+
+    auto printf_format_const = llvm::ConstantDataArray::getString(MyContext, printf_format);
+
+    auto format_string_var = new llvm::GlobalVariable(*context.module, llvm::ArrayType::get(llvm::IntegerType::get(MyContext, 8), printf_format.size() + 1), true, llvm::GlobalValue::PrivateLinkage, printf_format_const, ".str");
+
+    auto zero = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(MyContext));
+
+    std::vector<llvm::Constant *> indices;
+    indices.push_back(zero); indices.push_back(zero);
+    auto var_ref = llvm::ConstantExpr::getGetElementPtr(llvm::ArrayType::get(llvm::IntegerType::get(MyContext, 8), printf_format.size() + 1), format_string_var, indices);
+
+    printf_args.insert(printf_args.begin(), var_ref);
+    auto call = llvm::CallInst::Create(context.print, llvm::makeArrayRef(printf_args), "", context.currentBlock());
+    return call;
 }
 
 llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
@@ -551,7 +596,7 @@ llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
     context.blocks.top()->function = currentFuction;
 
 //    context.popBlock(); // ??
-//    loopStmt->CodeGen(context); why ?
+    stmt->codeGen(context); // why ? -- 因为包括右边的
     delete initial;
     delete f;
     delete int1;
