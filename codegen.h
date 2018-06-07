@@ -27,6 +27,7 @@ public:
     llvm::Function *function;
     std::map<std::string, llvm::Value *> locals;
     std::map<std::string, TypeDecl *> types;
+    std::string outputFilename;
 
     explicit CodeGenBlock(llvm::BasicBlock *block, CodeGenBlock *preBlock) : block(block), preBlock(preBlock) {}
 };
@@ -58,7 +59,7 @@ public:
 
     llvm::BasicBlock *currentBlock() { return blocks.top()->block; }
 
-    void generateCode(Node *root);
+    void generateCode(Node *root, const std::string &outputFilename);
 
     llvm::Function *printf;
 };

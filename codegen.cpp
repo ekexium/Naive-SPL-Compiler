@@ -6,9 +6,10 @@
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
 
 
-void CodeGenContext::generateCode(Node *root) {
+void CodeGenContext::generateCode(Node *root, const std::string &outputFilename) {
     std::cout << "Generating code...\n";
 
     /* Create the top level interpreter function to call as entry */
@@ -56,7 +57,8 @@ void CodeGenContext::generateCode(Node *root) {
     llvm::outs() << *module;
     std::cout << "code is gen~!~\n";
     std::error_code ErrInfo;
-    llvm::raw_ostream *out = new llvm::raw_fd_ostream("a.bc", ErrInfo, llvm::sys::fs::F_None);
-    llvm::WriteBitcodeToFile(module, *out);
+    llvm::raw_ostream *out = new llvm::raw_fd_ostream(outputFilename, ErrInfo, llvm::sys::fs::F_None);
+    *out << *module;
+//    llvm::WriteBitcodeToFile(module, *out);
     out->flush(); delete out;
 }
