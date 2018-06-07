@@ -567,7 +567,7 @@ char *yytext;
 #include "parser.hpp"
 
 #define  SaveToken  yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t) (printf("%s\n", yytext), yylval.token = t)
+#define TOKEN(t) (yylval.token = t)
 #line 572 "lexer.cpp"
 
 #define INITIAL 0
