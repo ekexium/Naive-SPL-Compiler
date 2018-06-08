@@ -7,19 +7,13 @@
 #define TOKEN(t) (yylval.token = t)
 %}
 
-sys_con "false" | "true" | "maxint"
-sys_funct "abs" | "chr" | "odd" | "pred" | "sqr" | "sqrt" | "succ"
-sys_proc "write" | "writeln"
-sys_type "boolean" | "char" | "integer" | "real"
-
-
 %%
 [ \t\n] ;
 "read" return TOKEN(READ);
-sys_con  SaveToken; return SYS_CON;
-sys_funct  SaveToken; return SYS_FUNCT;
-sys_proc SaveToken; return SYS_PROC;
-sys_type  SaveToken; return SYS_TYPE;
+"false"|"true"|"maxint" SaveToken; return SYS_CON;
+"abs"|"chr"|"odd"|"pred"|"sqr"|"sqrt"|"succ"  SaveToken; return SYS_FUNCT;
+"write"|"writeln" SaveToken; return SYS_PROC;
+"boolean"|"char"|"integer"|"real"  SaveToken; return SYS_TYPE;
 "("  return TOKEN(N_LP);
 ")"  return TOKEN(RP);
 "["  return TOKEN(LB);
