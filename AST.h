@@ -7,16 +7,50 @@
 
 #include <iostream>
 #include <map>
-#include <utility>
 #include <llvm/IR/Value.h>
 #include "NodePredeclaration.h"
 #include "codegen.h"
+
 class CodeGenContext;
+
 class Node {
 public:
+	static int idCount;
+	int id;
+
 	virtual ~Node() = default;
 
-	virtual llvm::Value *codeGen(CodeGenContext &context) {return 0;}
+	virtual llvm::Value *codeGen(CodeGenContext &context) { return 0; }
+
+	virtual std::vector<Node *> getChildren() = 0;
+
+	virtual void traverse(std::function<void(Node *)> pre, std::function<void(Node *)> post) {
+		try {
+			pre(this);
+			for (auto i : this->getChildren())
+				if (i != nullptr)
+					i->traverse(pre, post);
+			post(this);
+		} catch (std::exception &e) {
+			std::cout << e.what() << std::endl;
+		} catch (...) {
+			std::cout << "unknown exception during traversal" << std::endl;
+		}
+	}
+
+	virtual std::string getName() {
+		std::string id = typeid(*this).name();
+		while (!id.empty() && isdigit(id[0]))
+			id = id.substr(1);
+		return id;
+	}
+
+	virtual std::string getInfo() { return ""; }
+
+	Node() {
+		id = ++idCount;
+	}
+
 };
 
 class AbstractExpression : public Node {
@@ -32,7 +66,15 @@ public:
 	Routine *routine{};
 
 	Program(ProgramHead *programHead, Routine *routine) : programHead(programHead), routine(routine) {}
+
 	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(programHead);
+		ch.emplace_back(routine);
+		return ch;
+	}
 };
 
 class ProgramHead : public AbstractStatement {
@@ -40,6 +82,15 @@ public:
 	std::string id;
 
 	explicit ProgramHead(std::string id) : id(std::move(id)) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return id;
+	}
 };
 
 
@@ -50,7 +101,15 @@ public:
 	RoutineBody *routineBody{};
 
 	Routine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead), routineBody(routineBody) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(routineHead);
+		ch.emplace_back(routineBody);
+		return ch;
+	}
 };
 
 class SubRoutine : public AbstractStatement {
@@ -61,7 +120,15 @@ public:
 
 	SubRoutine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead),
 																	 routineBody(routineBody) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(routineHead);
+		ch.emplace_back(routineBody);
+		return ch;
+	}
 };
 
 class RoutineHead : public AbstractStatement {
@@ -77,11 +144,27 @@ public:
 				RoutinePart *routinePart) : labelPart(labelPart), constPart(constPart), typePart(typePart),
 											varPart(varPart), routinePart(routinePart) {}
 
-	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(labelPart);
+		ch.emplace_back(constPart);
+		ch.emplace_back(typePart);
+		ch.emplace_back(varPart);
+		ch.emplace_back(routinePart);
+		return ch;
+	}
 };
 
 class LabelPart : public AbstractStatement {
 public:
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		return ch;
+	}
 };
 
 class ConstPart : public AbstractStatement {
@@ -90,7 +173,15 @@ public:
 	ConstExprList *constExprList{}; // might be nullptr
 
 	explicit ConstPart(ConstExprList *constExprList) : constExprList(constExprList) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(constExprList);
+		return ch;
+	}
 };
 
 class ConstExprList : public AbstractStatement {
@@ -103,7 +194,20 @@ public:
 	ConstExprList(std::string name, ConstExprList *preList, ConstValue *value) : name(std::move(name)),
 																				 preList(preList),
 																				 value(value) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(value);
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return name;
+	}
 };
 
 class ConstValue : public AbstractExpression {
@@ -121,9 +225,10 @@ public:
 
 	ConstValue(std::string value, int type) : value(std::move(value)), type(type) {
 		assert(type >= 1 && type <= 5);
-		if (type == T_CHAR) value = value[1];
-//		no T_STRING
-//		if (type == T_STRING)
+		if (type == T_CHAR)
+			value = value[1];
+		//		no T_STRING
+		//		if (type == T_STRING)
 	}
 
 	ConstValue *negate() {
@@ -134,7 +239,18 @@ public:
 		else
 			return new ConstValue("-" + value, type);
 	}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return value;
+	}
 };
 
 class TypePart : public AbstractStatement {
@@ -143,7 +259,15 @@ public:
 	TypeDeclList *typeDeclList{};
 
 	explicit TypePart(TypeDeclList *typeDeclList) : typeDeclList(typeDeclList) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(typeDeclList);
+		return ch;
+	}
 };
 
 class TypeDeclList : public AbstractStatement {
@@ -153,7 +277,15 @@ public:
 
 	TypeDeclList(TypeDeclList *preList, TypeDefinition *typeDefinition) : preList(preList),
 																		  typeDefinition(typeDefinition) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(typeDefinition);
+		return ch;
+	}
 };
 
 class TypeDefinition : public AbstractStatement {
@@ -162,7 +294,19 @@ public:
 	TypeDecl *typeDecl{};
 
 	TypeDefinition(std::string name, TypeDecl *typeDecl) : name(std::move(name)), typeDecl(typeDecl) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(typeDecl);
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return name;
+	}
 };
 
 class TypeDecl : public AbstractStatement {
@@ -182,7 +326,16 @@ public:
 
 	explicit TypeDecl(RecordTypeDecl *recordTypeDecl) : recordTypeDecl(recordTypeDecl) { type = T_RECORD_TYPE_DECLARE; }
 
-	llvm::Type * getType(CodeGenContext & context);
+	llvm::Type *getType(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(simpleTypeDecl);
+		ch.emplace_back(arrayTypeDecl);
+		ch.emplace_back(recordTypeDecl);
+		return ch;
+	}
 };
 
 class SimpleTypeDecl : public AbstractStatement {
@@ -215,8 +368,18 @@ public:
 																	 upperBound(upperBound), type(T_RANGE) {}
 
 	SimpleTypeDecl(std::string lowerName, std::string upperName) : lowerName(std::move(lowerName)),
-																   upperName(std::move(upperName)), type(T_NAME_RANGE) {}
-	llvm::Type * getType(CodeGenContext & context);
+																   upperName(std::move(upperName)),
+																   type(T_NAME_RANGE) {}
+
+	llvm::Type *getType(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		ch.emplace_back(lowerBound);
+		ch.emplace_back(upperBound);
+		return ch;
+	}
 };
 
 class ArrayTypeDecl : public AbstractStatement {
@@ -226,7 +389,14 @@ public:
 
 	ArrayTypeDecl(SimpleTypeDecl *range, TypeDecl *elementType) : range(range), elementType(elementType) {}
 
-	llvm::Type * getType(CodeGenContext & context);
+	llvm::Type *getType(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(range);
+		ch.emplace_back(elementType);
+		return ch;
+	}
 };
 
 class RecordTypeDecl : public AbstractStatement {
@@ -235,7 +405,13 @@ public:
 
 	explicit RecordTypeDecl(FieldDeclList *fieldDeclList) : fieldDeclList(fieldDeclList) {}
 
-	llvm::Type * getType(CodeGenContext & context);
+	llvm::Type *getType(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(fieldDeclList);
+		return ch;
+	}
 };
 
 class FieldDeclList : public AbstractStatement {
@@ -244,6 +420,13 @@ public:
 	FieldDecl *fieldDecl{};
 
 	FieldDeclList(FieldDeclList *preList, FieldDecl *fieldDecl) : preList(preList), fieldDecl(fieldDecl) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(fieldDecl);
+		return ch;
+	}
 };
 
 class FieldDecl : public AbstractStatement {
@@ -252,6 +435,13 @@ public:
 	TypeDecl *typeDecl{};
 
 	FieldDecl(NameList *nameList, TypeDecl *typeDecl) : nameList(nameList), typeDecl(typeDecl) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		ch.emplace_back(typeDecl);
+		return ch;
+	}
 };
 
 class NameList : public AbstractStatement {
@@ -260,6 +450,16 @@ public:
 	std::string name;
 
 	NameList(NameList *nameList, std::string name) : nameList(nameList), name(std::move(name)) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return name;
+	}
 };
 
 class VarPart : public AbstractStatement {
@@ -267,7 +467,14 @@ public:
 	VarDeclList *varDeclList{};
 
 	explicit VarPart(VarDeclList *varDeclList) : varDeclList(varDeclList) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(varDeclList);
+		return ch;
+	}
 };
 
 class VarDeclList : public AbstractStatement {
@@ -276,7 +483,16 @@ public:
 	VarDecl *varDecl{};
 
 	VarDeclList(VarDeclList *preList, VarDecl *varDecl) : preList(preList), varDecl(varDecl) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(varDecl);
+		return ch;
+	}
 };
 
 class VarDecl : public AbstractStatement {
@@ -285,7 +501,16 @@ public:
 	TypeDecl *typeDecl{};
 
 	VarDecl(NameList *nameList, TypeDecl *typeDecl) : nameList(nameList), typeDecl(typeDecl) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		ch.emplace_back(typeDecl);
+		return ch;
+	}
 };
 
 class RoutinePart : public AbstractStatement {
@@ -316,7 +541,15 @@ public:
 
 	explicit RoutinePart(int type) : type(type) { assert(type == T_EMPTY); }
 
-	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(routinePart);
+		ch.emplace_back(functionDecl);
+		ch.emplace_back(procedureDecl);
+		return ch;
+	}
 };
 
 class FunctionDecl : public AbstractStatement {
@@ -327,7 +560,14 @@ public:
 	FunctionDecl(FunctionHead *functionHead, SubRoutine *subRoutine) : functionHead(functionHead),
 																	   subRoutine(subRoutine) {}
 
-	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(functionHead);
+		ch.emplace_back(subRoutine);
+		return ch;
+	}
 };
 
 class FunctionHead : public AbstractStatement {
@@ -340,6 +580,17 @@ public:
 																						 parameters(parameters),
 																						 returnType(
 																								 returnType) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(parameters);
+		ch.emplace_back(returnType);
+		return ch;
+	}
+
+	std::string getInfo() override {
+		return name;
+	}
 };
 
 class ProcedureDecl : public AbstractStatement {
@@ -349,7 +600,15 @@ public:
 
 	ProcedureDecl(ProcedureHead *procedureHead, SubRoutine *subRoutine) : procedureHead(procedureHead),
 																		  subRoutine(subRoutine) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(procedureHead);
+		ch.emplace_back(subRoutine);
+		return ch;
+	}
 };
 
 class ProcedureHead : public AbstractStatement {
@@ -358,6 +617,18 @@ public:
 	Parameters *parameters;
 
 	ProcedureHead(std::string name, Parameters *parameters) : name(std::move(name)), parameters(parameters) {}
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(parameters);
+		return ch;
+	}
+
+
+	std::string getInfo() override {
+		return name;
+	}
 };
 
 class Parameters : public AbstractStatement {
@@ -365,6 +636,12 @@ public:
 	ParaDeclList *paraDeclList{};
 
 	explicit Parameters(ParaDeclList *paraDeclList) : paraDeclList(paraDeclList) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(paraDeclList);
+		return ch;
+	}
 };
 
 class ParaDeclList : public AbstractStatement {
@@ -374,7 +651,15 @@ public:
 
 	ParaDeclList(ParaDeclList *paraDeclList, ParaTypeList *paraTypeList) : paraDeclList(paraDeclList),
 																		   paraTypeList(paraTypeList) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(paraDeclList);
+		ch.emplace_back(paraTypeList);
+		return ch;
+	}
 };
 
 class ParaTypeList : public AbstractStatement {
@@ -392,6 +677,15 @@ public:
 
 	ParaTypeList(ValParaList *valParaList, SimpleTypeDecl *typeDecl) : valParaList(valParaList),
 																	   typeDecl(typeDecl) { type = T_VAL; }
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(varParaList);
+		ch.emplace_back(valParaList);
+		ch.emplace_back(typeDecl);
+		return ch;
+	}
 };
 
 class VarParaList : public AbstractStatement {
@@ -399,6 +693,12 @@ public:
 	NameList *nameList{};
 
 	explicit VarParaList(NameList *nameList) : nameList(nameList) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		return ch;
+	}
 };
 
 class ValParaList : public AbstractStatement {
@@ -406,6 +706,12 @@ public:
 	NameList *nameList{};
 
 	explicit ValParaList(NameList *nameList) : nameList(nameList) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nameList);
+		return ch;
+	}
 };
 
 class RoutineBody : public AbstractStatement {
@@ -413,7 +719,14 @@ public:
 	CompoundStmt *compoundStmt{};
 
 	explicit RoutineBody(CompoundStmt *compoundStmt) : compoundStmt(compoundStmt) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(compoundStmt);
+		return ch;
+	}
 };
 
 class CompoundStmt : public AbstractStatement {
@@ -421,7 +734,14 @@ public:
 	StmtList *stmtList{};
 
 	explicit CompoundStmt(StmtList *stmtList) : stmtList(stmtList) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(stmtList);
+		return ch;
+	}
 };
 
 class StmtList : public AbstractStatement {
@@ -430,7 +750,15 @@ public:
 	Stmt *stmt{}; // NOTICE: fixme: might be nullptr, due to the grammar given...
 
 	StmtList(StmtList *preList, Stmt *stmt) : preList(preList), stmt(stmt) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(stmt);
+		return ch;
+	}
 };
 
 class Stmt : public AbstractStatement {
@@ -444,7 +772,14 @@ public:
 	Stmt(int type, NonLabelStmt *nonLabelStmt) : type(type), nonLabelStmt(nonLabelStmt) {
 		assert(type == T_LABELED || type == T_UNLABELED);
 	}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(nonLabelStmt);
+		return ch;
+	}
 };
 
 class NonLabelStmt : public AbstractStatement {
@@ -488,7 +823,21 @@ public:
 
 	explicit NonLabelStmt(GotoStmt *gotoStmt) : gotoStmt(gotoStmt) { type = T_GOTO; }
 
-	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(assignStmt);
+		ch.emplace_back(procStmt);
+		ch.emplace_back(compoundStmt);
+		ch.emplace_back(ifStmt);
+		ch.emplace_back(repeatStmt);
+		ch.emplace_back(whileStmt);
+		ch.emplace_back(forStmt);
+		ch.emplace_back(caseStmt);
+		ch.emplace_back(gotoStmt);
+		return ch;
+	}
 };
 
 class AssignStmt : public AbstractStatement {
@@ -511,7 +860,21 @@ public:
 	AssignStmt(std::string id, std::string recordId, Expression *rhs) : id(std::move(id)), rhs(rhs),
 																		recordId(std::move(recordId)),
 																		type(T_RECORD) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(rhs);
+		ch.emplace_back(index);
+		return ch;
+	}
+
+
+	std::string getInfo() override {
+		return id + "=..";
+	}
 };
 
 class ProcStmt : public AbstractStatement {
@@ -549,7 +912,24 @@ public:
 
 	explicit ProcStmt(Factor *factor) : factor(factor), type(T_READ) {}
 
-	llvm::Value * codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(argsList);
+		ch.emplace_back(expressionList);
+		return ch;
+	}
+
+
+	std::string getInfo() override {
+		if (!procId.empty())
+			return procId;
+		if (!sysProc.empty())
+			return sysProc;
+		return "";
+	}
 };
 
 class IfStmt : public AbstractStatement {
@@ -560,7 +940,17 @@ public:
 
 	IfStmt(Expression *expression, Stmt *stmt, ElseClause *elseClause) : expression(expression), stmt(stmt),
 																		 elseClause(elseClause) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(expression);
+		ch.emplace_back(stmt);
+		ch.emplace_back(elseClause);
+		return ch;
+	}
 };
 
 class ElseClause : public AbstractStatement {
@@ -568,7 +958,14 @@ public:
 	Stmt *stmt{};
 
 	explicit ElseClause(Stmt *stmt) : stmt(stmt) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(stmt);
+		return ch;
+	}
 };
 
 class RepeatStmt : public AbstractStatement {
@@ -577,7 +974,15 @@ public:
 	Expression *untilCondition{};
 
 	RepeatStmt(StmtList *stmtList, Expression *untilCondition) : stmtList(stmtList), untilCondition(untilCondition) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(stmtList);
+		ch.emplace_back(untilCondition);
+		return ch;
+	}
 };
 
 class WhileStmt : public AbstractStatement {
@@ -586,7 +991,16 @@ public:
 	Stmt *stmt{};
 
 	WhileStmt(Expression *whileCondition, Stmt *stmt) : whileCondition(whileCondition), stmt(stmt) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(whileCondition);
+		ch.emplace_back(stmt);
+		return ch;
+	}
 };
 
 class ForStmt : public AbstractStatement {
@@ -600,7 +1014,22 @@ public:
 	ForStmt(std::string loopId, Expression *firstBound, Direction *direction, Expression *secondBound, Stmt *stmt)
 			: loopId(std::move(loopId)), firstBound(firstBound), direction(direction), secondBound(secondBound),
 			  stmt(stmt) {}
-	llvm::Value * codeGen(CodeGenContext &context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(firstBound);
+		ch.emplace_back(direction);
+		ch.emplace_back(secondBound);
+		ch.emplace_back(stmt);
+		return ch;
+	}
+
+
+	std::string getInfo() override {
+		return loopId;
+	}
 };
 
 class Direction : public AbstractStatement {
@@ -610,6 +1039,11 @@ public:
 	int type{};
 
 	explicit Direction(int type) : type(type) { assert(type == T_TO || type == T_DOWNTO); }
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		return ch;
+	}
 };
 
 class CaseStmt : public AbstractStatement {
@@ -618,6 +1052,13 @@ public:
 	CaseExprList *caseExprList{};
 
 	CaseStmt(Expression *expression, CaseExprList *caseExprList) : expression(expression), caseExprList(caseExprList) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(expression);
+		ch.emplace_back(caseExprList);
+		return ch;
+	}
 };
 
 class CaseExprList : public AbstractStatement {
@@ -626,6 +1067,13 @@ public:
 	CaseExpr *caseExpr;
 
 	CaseExprList(CaseExprList *preList, CaseExpr *caseExpr) : preList(preList), caseExpr(caseExpr) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(caseExpr);
+		return ch;
+	}
 };
 
 class CaseExpr : public AbstractStatement {
@@ -640,6 +1088,19 @@ public:
 	CaseExpr(ConstValue *constValue, Stmt *stmt) : constValue(constValue), stmt(stmt), type(T_CONST) {}
 
 	CaseExpr(std::string id, Stmt *stmt) : id(std::move(id)), stmt(stmt), type(T_ID) {}
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(constValue);
+		ch.emplace_back(stmt);
+		return ch;
+	}
+
+
+	std::string getInfo() override {
+		return id.empty() ? "" : id;
+	}
 };
 
 class GotoStmt : public AbstractStatement {
@@ -647,15 +1108,28 @@ public:
 	ConstValue *address;
 
 	explicit GotoStmt(const std::string &address) : address(new ConstValue(address, ConstValue::T_INTEGER)) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(address);
+		return ch;
+	}
 };
 
 // todo: expression or statement, does it matter?
-class ExpressionList : AbstractExpression {
+class ExpressionList : public AbstractExpression {
 public:
 	ExpressionList *preList{};
 	Expression *expression{};
 
 	ExpressionList(ExpressionList *preList, Expression *expression) : preList(preList), expression(expression) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(expression);
+		return ch;
+	}
 };
 
 class Expression : public AbstractExpression {
@@ -676,7 +1150,16 @@ public:
 	}
 
 	explicit Expression(Expr *expr) : expr(expr), type(T_EXPR) {}
-	llvm::Value* codeGen(CodeGenContext& context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(expression);
+		ch.emplace_back(expr);
+		return ch;
+	}
 };
 
 class Expr : public AbstractExpression {
@@ -695,7 +1178,15 @@ public:
 	}
 
 	explicit Expr(Term *term) : term(term), type(T_TERM) {}
-	llvm::Value* codeGen(CodeGenContext& context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(expr);
+		ch.emplace_back(term);
+		return ch;
+	}
 
 };
 
@@ -716,7 +1207,15 @@ public:
 	}
 
 	explicit Term(Factor *factor) : factor(factor), type(T_FACTOR) {}
-	llvm::Value* codeGen(CodeGenContext& context);
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(term);
+		ch.emplace_back(factor);
+		return ch;
+	}
 };
 
 class Factor : public AbstractExpression {
@@ -741,6 +1240,19 @@ public:
 	Factor *factor{};
 	std::string id;
 	std::string recordId;
+
+
+	std::string getInfo() override {
+		if (!name.empty())
+			return name;
+		if (!sysFunction.empty())
+			return sysFunction;
+		if (!recordId.empty())
+			return id + "[" + recordId + "]=..";
+		if (!id.empty())
+			return id + "=..";
+		return "";
+	}
 
 	Factor(int type, const std::string &st) : type(type) {
 		assert(type == T_NAME || type == T_SYS_FUNCT);
@@ -768,8 +1280,19 @@ public:
 
 	Factor(std::string id, Expression *expression) : expression(expression), id(std::move(id)), type(T_ID_EXPR) {}
 
-	Factor(std::string id, std::string recordId) : id(std::move(id)), recordId(std::move(recordId)), type(T_ID_DOT_ID) {}
-	llvm::Value* codeGen(CodeGenContext& context);
+	Factor(std::string id, std::string recordId) : id(std::move(id)), recordId(std::move(recordId)),
+												   type(T_ID_DOT_ID) {}
+
+	llvm::Value *codeGen(CodeGenContext &context);
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(argsList);
+		ch.emplace_back(constValue);
+		ch.emplace_back(expression);
+		ch.emplace_back(factor);
+		return ch;
+	}
 };
 
 class ArgsList : public AbstractStatement {
@@ -778,6 +1301,13 @@ public:
 	Expression *expression;
 
 	ArgsList(ArgsList *preList, Expression *expression) : preList(preList), expression(expression) {}
+
+	std::vector<Node *> getChildren() override {
+		auto ch = std::vector<Node *>();
+		ch.emplace_back(preList);
+		ch.emplace_back(expression);
+		return ch;
+	}
 };
 
 #endif //SPLC_NODE_H
