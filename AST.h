@@ -399,6 +399,17 @@ public:
 			return table.getInt(upperName) - table.getInt(lowerName);
 		}
 	}
+
+	int getLowerBound(const ConstTable &table) {
+		assert(type == T_RANGE || type == T_NAME_RANGE);
+		if (type == T_RANGE) {
+			assert(upperBound->type == ConstValue::T_INTEGER);
+			assert(lowerBound->type == ConstValue::T_INTEGER);
+			return std::stoi(lowerBound->value);
+		} else {
+			return table.getInt(lowerName);
+		}
+	}
 };
 
 class ArrayTypeDecl : public AbstractStatement {
@@ -672,7 +683,6 @@ public:
 	ParaDeclList(ParaDeclList *paraDeclList, ParaTypeList *paraTypeList) : paraDeclList(paraDeclList),
 																		   paraTypeList(paraTypeList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context) override;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -1164,6 +1174,7 @@ public:
 	int type;
 	Expression *expression{};
 	Expr *expr{};
+	llvm::Value * lastValue = nullptr;
 
 	Expression(int type, Expression *expression, Expr *expr) : type(type), expression(expression), expr(expr) {
 		assert(type >= 1 && type <= 6);

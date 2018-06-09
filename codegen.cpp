@@ -123,7 +123,6 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
     legacy::PassManager pass;
 //    auto FileType = TargetMachine::CGFT_ObjectFile;
     auto FileType = TargetMachine::CGFT_AssemblyFile;
-
     if (TheTargetMachine->addPassesToEmitFile(pass, dest, FileType)) {
         errs() << "TheTargetMachine can't emit a file of this type";
         return;
