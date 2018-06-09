@@ -5,8 +5,9 @@
 #include "codegen.h"
 #include "parser.hpp"
 
+extern FILE *yyin;
 extern Program *astRoot;
-
+void installSystemFunctions(Program *root);
 extern int yyparse();
 
 std::ofstream astOut;
@@ -26,22 +27,24 @@ void printAST(Node *node) {
 void doNothing(Node *node) {}
 
 int main(int argc, char **argv) {
-//	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/test3.spl";
-	std::string sourceFile = "/Users/xwy/Downloads/test_examples/test1.spl";
-	extern FILE *yyin;
+	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/demo.spl";
+	//	std::string sourceFile = "/Users/xwy/Downloads/test_examples/test1.spl";
 	yyin = fopen(sourceFile.c_str(), "r");
 	yyparse();
 
+	auto root = astRoot;
+	//	install system functions
+//	installSystemFunctions(root);
 	//visualize
 	astOut.open("ast.dot", std::ios::out | std::ios::trunc);
 	astOut << "graph g{" << std::endl;
 	std::cout << "begin draw ast" << std::endl;
-	astRoot->traverse(printAST, doNothing);
+	root->traverse(printAST, doNothing);
 	std::cout << "finish draw ast" << std::endl;
 	astOut << "}" << std::endl;
 	astOut.close();
 
 	CodeGenContext context;
-	context.generateCode(astRoot, "output.ll");
+	context.generateCode(root, "output.ll");
 	return 0;
 }

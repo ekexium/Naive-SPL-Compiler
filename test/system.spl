@@ -1,0 +1,22 @@
+program system_functions;
+
+
+function pred__(x:char):integer;
+begin
+    pred__ := x - 1;
+end;
+
+function sqr__(x:integer):integer;
+begin
+    sqr__ := x * x;
+end;
+
+function succ__(x:integer):integer;
+begin
+    succ__:=x+1;
+end
+;
+
+
+begin
+end.
