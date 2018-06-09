@@ -384,7 +384,8 @@ llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
 }
 
 void SubRoutine::clearConstTable(ConstTable &table) {
-	routineHead->constPart->constExprList->removeFromConstTable(table);
+    if (routineHead->constPart->constExprList)
+    	routineHead->constPart->constExprList->removeFromConstTable(table);
 };
 
 llvm::Value *ParaDeclList::codeGen(CodeGenContext &context) {

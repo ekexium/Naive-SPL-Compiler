@@ -425,7 +425,7 @@ public:
 
 	explicit RecordTypeDecl(FieldDeclList *fieldDeclList) : fieldDeclList(fieldDeclList) {}
 
-	llvm::Type *getType(CodeGenContext &context, std::string  & name);
+	llvm::Type *getType(CodeGenContext &context, std::string &name);
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -1278,16 +1278,22 @@ public:
 		assert(type == T_NAME || type == T_SYS_FUNCT);
 		if (type == T_NAME)
 			name = st;
-		else
+		else {
 			sysFunction = st;
+		}
 	}
 
 	Factor(int type, const std::string &st, ArgsList *argsList) : type(type), argsList(argsList) {
 		assert(type == T_NAME_ARGS || type == T_SYS_FUNCT_ARGS);
 		if (type == T_NAME_ARGS)
 			name = st;
-		else
-			sysFunction = st;
+		else {
+			//			sysFunction = st;
+			if (st == "succ" || st == "abs" || st == "odd" || st == "pred" || st == "sqr") {
+				name = st + "__";
+				type = T_NAME;
+			}
+		}
 	}
 
 	explicit Factor(ConstValue *constValue) : constValue(constValue), type(T_CONST) {}
