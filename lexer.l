@@ -11,7 +11,7 @@
 [ \t\n] ;
 "read" return TOKEN(READ);
 "false"|"true"|"maxint" SaveToken; return SYS_CON;
-"abs"|"chr"|"odd"|"pred"|"sqr"|"sqrt"|"succ"  SaveToken; return SYS_FUNCT;
+"abs"|"chr"|"odd"|"ord"|"pred"|"sqr"|"sqrt"|"succ"  SaveToken; return SYS_FUNCT;
 "write"|"writeln" SaveToken; return SYS_PROC;
 "boolean"|"char"|"integer"|"real"  SaveToken; return SYS_TYPE;
 "("  return TOKEN(N_LP);
@@ -72,8 +72,8 @@
 [a-zA-Z][_a-zA-Z0-9]* SaveToken; return N_ID;
 [0-9]+  SaveToken; return INTEGER;
 [0-9]+\.[0-9]* SaveToken; return REAL;
-'^'' SaveToken; return CHAR;
-'[^']*' SaveToken; return STRING;
+\'.\' SaveToken; return CHAR;
+\'^'[^']*\' SaveToken; return STRING;
 . printf("Unknown token:%s\n", yytext); yyterminate();
 %%
 int yywrap()
