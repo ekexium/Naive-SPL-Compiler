@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 #include <stack>
 #include <utility>
 #include <llvm/IR/Value.h>
@@ -19,6 +20,13 @@
 static llvm::LLVMContext MyContext;
 
 class Node;
+class FunctionHead;
+
+class FuncVars {
+public:
+    std::vector<llvm::Value *> storePlace;
+    std::vector<int> position;
+};
 
 class CodeGenBlock {
 public:
@@ -36,6 +44,8 @@ class CodeGenContext {
 public:
     std::stack<CodeGenBlock *> blocks;
     llvm::Module *module;
+    std::map<std::string, FuncVars> funcVars;
+
 
     CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
     ~CodeGenContext() {
