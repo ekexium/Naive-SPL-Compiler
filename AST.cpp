@@ -9,6 +9,11 @@
 
 using namespace llvm;
 
+static Value *GetArrayRef(CodeGenContext &context, const std::string & id, Expression *index);
+
+static Value *GetRecordRef(CodeGenContext &context, std::string id, std::string recordId);
+static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string & id);
+
 llvm::Value *Program::codeGen(CodeGenContext &context) {
     if (routine)
         routine->codeGen(context);
@@ -285,8 +290,7 @@ llvm::Value *FunctionDecl::codeGen(CodeGenContext &context) {
 
     // Load return value
     auto retVal = new LoadInst(alloc, "", false, context.currentBlock());
-    llvm::ReturnInst::Create(MyContext, retVal, bblock
-    );
+    llvm::ReturnInst::Create(MyContext, retVal, context.currentBlock());
     context.popBlock();
 
     while (context.blocks.top() != parent)
@@ -484,28 +488,36 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
                 break;
             if (k == *j) {
                 auto tmp = new llvm::LoadInst(*i, "", false, context.currentBlock()); // ??
-                i++;
-                j++;
                 if (!p->expression || p->expression->type != Expression::T_EXPR ||
                     p->expression->expr->type != Expr::T_TERM ||
                     p->expression->expr->term->type != Term::T_FACTOR ||
-                    p->expression->expr->term->factor->type != Factor::T_NAME) {
+                    (p->expression->expr->term->factor->type != Factor::T_NAME &&
+                     p->expression->expr->term->factor->type != Factor::T_ID_DOT_ID &&
+                     p->expression->expr->term->factor->type != Factor::T_ID_EXPR)) {
                     std::cout << "Reference must pass a variable." << std::endl;
                     exit(0);
                 }
-                auto name = p->expression->expr->term->factor->name;
-                if (context.constTable.isConst(name)) {
-                    assert("const value" == "should not be referenced");
-                }
-                auto b = context.blocks.top();
-                while (b) {
-                    if (b->locals.find(name) == b->locals.end()) {
-                        b = b->preBlock;
-                        continue;
+                if(p->expression->expr->term->factor->type == Factor::T_NAME) {
+                    auto name = p->expression->expr->term->factor->name;
+                    if (context.constTable.isConst(name)) {
+                        assert("const value" == "should not be referenced");
                     }
-                    new llvm::StoreInst(tmp, b->locals[name], false, context.currentBlock());
-                    break;
+                    auto b = context.blocks.top();
+                    while (b) {
+                        if (b->locals.find(name) == b->locals.end()) {
+                            b = b->preBlock;
+                            continue;
+                        }
+                        new llvm::StoreInst(tmp, b->locals[name], false, context.currentBlock());
+                        break;
+                    }
+                } else if (p->expression->expr->term->factor->type == Factor::T_ID_DOT_ID) {
+                    new llvm::StoreInst(tmp, GetRecordRef(context, p->expression->expr->term->factor->id, p->expression->expr->term->factor->recordId), false, context.currentBlock());
+                } else {
+                    new llvm::StoreInst(tmp, GetArrayRef(context, p->expression->expr->term->factor->expression->lastValue, p->expression->expr->term->factor->id), false, context.currentBlock());
                 }
+                i++;
+                j++;
             }
             p = p->preList;
             k++;
@@ -571,74 +583,37 @@ llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
         if (type == T_SIMPLE)
             return new llvm::StoreInst(rhs->codeGen(context), b->locals[id], false, context.currentBlock());
         else if (type == T_ARRAY) {
-            auto idxList = std::vector<llvm::Value *>();
-            idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
-            assert(b->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
-            auto ptr = b->locals[id]; // ??
-            Type *t = b->varTypes[id]->getType(context, id);
-            Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32,
-                                                                              b->varTypes[id]->arrayTypeDecl->range->getLowerBound(
-                                                                                      context.constTable), false));
-            auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, index->codeGen(context),
-                                                       lowerBound, "", context.currentBlock());
-            idxList.push_back(second);
-            GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
-                                                                  context.currentBlock());
-            return new llvm::StoreInst(rhs->codeGen(context), elePtr, false, context.currentBlock());
+            return new llvm::StoreInst(rhs->codeGen(context), GetArrayRef(context, id, index), false,
+                                       context.currentBlock());
         } else {
-            Value *ptr;
-            std::vector<llvm::Value *> idxList;
-
-                assert(b->varTypes[id]->type == TypeDecl::T_RECORD_TYPE_DECLARE);
-                FieldDeclList *fieldDeclList = b->varTypes[id]->recordTypeDecl->fieldDeclList;
-                int i = 0;
-                bool flag = false;
-                while (fieldDeclList && !flag) {
-                    NameList *n = fieldDeclList->fieldDecl->nameList;
-                    while (n) {
-                        if (n->name == recordId) {
-                            flag = true;
-                            break;
-                        }
-                        i++;
-                        n = n->nameList;
-                    }
-                    fieldDeclList = fieldDeclList->preList;
-                }
-                if (!flag) {
-                    assert("record id" == "not in record member");
-                }
-                auto first = llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
-                auto second = llvm::ConstantInt::get(MyContext, llvm::APInt(32, i, false));
-                idxList.push_back(first);
-                idxList.push_back(second);
-                ptr = b->locals[id]; // ??
-                Type *t = b->varTypes[id]->getType(context, id);
-                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
-                                                                      context.currentBlock());
-                return new StoreInst(rhs->codeGen(context), elePtr, false, context.currentBlock());
+            return new StoreInst(rhs->codeGen(context), GetRecordRef(context, id, recordId), false,
+                                 context.currentBlock());
         }
     }
     return nullptr;
 }
 
 llvm::Value *IfStmt::codeGen(CodeGenContext &context) {
+    Function * currentFuction = context.blocks.top()->function;
     Value *condition = expression->codeGen(context);
     BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", context.blocks.top()->function);
     BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", context.blocks.top()->function);
     BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", context.blocks.top()->function);
     llvm::Instruction *ret = llvm::BranchInst::Create(btrue, bfalse, condition, context.currentBlock());
     context.pushBlock(btrue);
+    context.blocks.top()->function = currentFuction;
 
     stmt->codeGen(context);
     llvm::BranchInst::Create(bmerge, context.currentBlock());
     context.popBlock();
     context.pushBlock(bfalse);
+    context.blocks.top()->function = currentFuction;
     if (elseClause)
         elseClause->codeGen(context);
     llvm::BranchInst::Create(bmerge, context.currentBlock());
     context.popBlock();
     context.pushBlock(bmerge);
+    context.blocks.top()->function = currentFuction;
     return ret;
 }
 
@@ -694,34 +669,44 @@ llvm::Value *RepeatStmt::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *Expression::codeGen(CodeGenContext &context) {
+    Value * res = nullptr;
     if (type == T_EXPR) {
-        return expr->codeGen(context);
+        res = expr->codeGen(context);
     } else {
         Value *op1_val = expression->codeGen(context);
         Value *op2_val = expr->codeGen(context);
         switch (type) {
             case T_EQ:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             case T_NE:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_NE,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_NE,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             case T_LT:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLT,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLT,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             case T_GT:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGT,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGT,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             case T_LE:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLE,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLE,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             case T_GE:
-                return llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGE,
+                res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGE,
                                              op1_val, op2_val, "", context.currentBlock());
+                break;
             default:
-                return nullptr;
+                res = nullptr;
+                break;
         }
     }
+    lastValue = res;
+    return res;
 }
 
 llvm::Value *Expr::codeGen(CodeGenContext &context) {
@@ -793,79 +778,119 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
             return nullptr; // not finished
         case T_NAME_ARGS:
             return funcGen(context, name, argsList);
-        case T_ID_DOT_ID: {
-            Value *ptr;
-            std::vector<llvm::Value *> idxList;
-            while (p) {
-                if (p->locals.find(id) == p->locals.end()) {
-                    p = p->preBlock;
-                    continue;
-                }
-                if (p->locals[id] == nullptr) {
-                    std::cout << "Uninitialize variable: " << id << std::endl;
-                }
-//                if(context.constTable.isConst(name)) return p->locals[name];
-                assert(p->varTypes[id]->type == TypeDecl::T_RECORD_TYPE_DECLARE);
-                FieldDeclList *fieldDeclList = p->varTypes[id]->recordTypeDecl->fieldDeclList;
-                int i = 0;
-                bool flag = false;
-                while (fieldDeclList && !flag) {
-                    NameList *n = fieldDeclList->fieldDecl->nameList;
-                    while (n) {
-                        if (n->name == recordId) {
-                            flag = true;
-                            break;
-                        }
-                        i++;
-                        n = n->nameList;
-                    }
-                    fieldDeclList = fieldDeclList->preList;
-                }
-                if (!flag) {
-                    assert("record id" == "not in record member");
-                }
-                auto first = llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
-                auto second = llvm::ConstantInt::get(MyContext, llvm::APInt(32, i, false));
-                idxList.push_back(first);
-                idxList.push_back(second);
-                ptr = p->locals[id]; // ??
-                Type *t = p->varTypes[id]->getType(context, id);
-                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
-                                                                      context.currentBlock());
-                return new LoadInst(elePtr, "", false, context.currentBlock());
-            }
-            assert("undefined variable" == "");
-            break;
-        }
-        case T_ID_EXPR: {
-            auto idxList = std::vector<llvm::Value *>();
-            idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
-            while (p) {
-                if (p->locals.find(id) == p->locals.end()) {
-                    p = p->preBlock;
-                    continue;
-                }
-                if (p->locals[id] == nullptr) {
-                    std::cout << "Uninitialize variable: " << id << std::endl;
-                }
-                assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
-
-                auto ptr = p->locals[id]; // ??
-                Type *t = p->varTypes[id]->getType(context, id);
-                Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32, p->varTypes[id]->arrayTypeDecl->range->getLowerBound(context.constTable), false));
-                auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, expression->codeGen(context),
-                                                           lowerBound, "", context.currentBlock());
-                idxList.push_back(second);
-                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
-                                                                      context.currentBlock());
-                return new LoadInst(elePtr, "", false, context.currentBlock());
-            }
-        }
+        case T_ID_DOT_ID:
+            return new LoadInst(GetRecordRef(context, id, recordId), "", false, context.currentBlock());
+        case T_ID_EXPR:
+            return new LoadInst(GetArrayRef(context, id, expression), "", false, context.currentBlock());
         default:
             return nullptr;
     }
     return nullptr;
 }
+
+static Value *GetRecordRef(CodeGenContext &context, std::string id, std::string recordId) {
+    auto p = context.blocks.top();
+    Value *ptr;
+    std::vector<llvm::Value *> idxList;
+    while (p) {
+        if (p->locals.find(id) == p->locals.end()) {
+            p = p->preBlock;
+            continue;
+        }
+        if (p->locals[id] == nullptr) {
+            std::cout << "Uninitialize variable: " << id << std::endl;
+        }
+        assert(p->varTypes[id]->type == TypeDecl::T_RECORD_TYPE_DECLARE);
+        FieldDeclList *fieldDeclList = p->varTypes[id]->recordTypeDecl->fieldDeclList;
+        int i = 0;
+        bool flag = false;
+        while (fieldDeclList && !flag) {
+            NameList *n = fieldDeclList->fieldDecl->nameList;
+            while (n) {
+                if (n->name == recordId) {
+                    flag = true;
+                    break;
+                }
+                i++;
+                n = n->nameList;
+            }
+            fieldDeclList = fieldDeclList->preList;
+        }
+        if (!flag) {
+            assert("record id" == "not in record member");
+        }
+        auto first = llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
+        auto second = llvm::ConstantInt::get(MyContext, llvm::APInt(32, i, false));
+        idxList.push_back(first);
+        idxList.push_back(second);
+        ptr = p->locals[id]; // ??
+        Type *t = p->varTypes[id]->getType(context, id);
+        GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                              context.currentBlock());
+        return elePtr;
+    }
+    return nullptr;
+}
+
+
+static Value *GetArrayRef(CodeGenContext &context, const std::string & id, Expression *index) {
+    auto idxList = std::vector<llvm::Value *>();
+    idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
+    auto p = context.blocks.top();
+    while (p) {
+        if (p->locals.find(id) == p->locals.end()) {
+            p = p->preBlock;
+            continue;
+        }
+        if (p->locals[id] == nullptr) {
+            std::cout << "Uninitialize variable: " << id << std::endl;
+        }
+        assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
+
+        auto ptr = p->locals[id]; // ??
+        Type *t = p->varTypes[id]->getType(context, id);
+        Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32,
+                                                                          p->varTypes[id]->arrayTypeDecl->range->getLowerBound(
+                                                                                  context.constTable), false));
+        auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, index->codeGen(context),
+                                                   lowerBound, "", context.currentBlock());
+        idxList.push_back(second);
+        GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                              context.currentBlock());
+        return elePtr;
+    }
+    return nullptr;
+}
+
+static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string & id) {
+    auto idxList = std::vector<llvm::Value *>();
+    idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
+    auto p = context.blocks.top();
+    while (p) {
+        if (p->locals.find(id) == p->locals.end()) {
+            p = p->preBlock;
+            continue;
+        }
+        if (p->locals[id] == nullptr) {
+            std::cout << "Uninitialize variable: " << id << std::endl;
+        }
+        assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
+
+        auto ptr = p->locals[id]; // ??
+        Type *t = p->varTypes[id]->getType(context, id);
+        Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32,
+                                                                          p->varTypes[id]->arrayTypeDecl->range->getLowerBound(
+                                                                                  context.constTable), false));
+        auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, index,
+                                                   lowerBound, "", context.currentBlock());
+        idxList.push_back(second);
+        GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                              context.currentBlock());
+        return elePtr;
+    }
+    return nullptr;
+}
+
 
 llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
     Function *currentFuction = context.blocks.top()->function;
@@ -882,7 +907,8 @@ llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
 
     auto *f = new Factor(Factor::T_NAME, loopId);
     Value *test = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
-                                        f->codeGen(context), secondBound->codeGen(context), "", context.currentBlock());
+                                        f->codeGen(context), secondBound->codeGen(context), "",
+                                        context.currentBlock());
     llvm::Instruction *ret = llvm::BranchInst::Create(bexit, bloop, test, context.currentBlock());
     context.popBlock();
 
@@ -896,11 +922,13 @@ llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
     if (direction->type == Direction::T_TO) {
         f1 = new Factor(Factor::T_NAME, loopId);
         update = llvm::BinaryOperator::Create(llvm::Instruction::Add,
-                                              f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
+                                              f1->codeGen(context), int1->codeGen(context), "",
+                                              context.currentBlock());
     } else {
         f1 = new Factor(Factor::T_NAME, loopId);
         update = llvm::BinaryOperator::Create(llvm::Instruction::Sub,
-                                              f1->codeGen(context), int1->codeGen(context), "", context.currentBlock());
+                                              f1->codeGen(context), int1->codeGen(context), "",
+                                              context.currentBlock());
     }
     CodeGenBlock *b = context.blocks.top();
     while (b) {

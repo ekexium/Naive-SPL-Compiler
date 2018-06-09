@@ -1174,6 +1174,7 @@ public:
 	int type;
 	Expression *expression{};
 	Expr *expr{};
+	llvm::Value * lastValue = nullptr;
 
 	Expression(int type, Expression *expression, Expr *expr) : type(type), expression(expression), expr(expr) {
 		assert(type >= 1 && type <= 6);
