@@ -13,3 +13,4 @@ A naive SPL compiler implementation in C++.
 - ProcStmt 除了write的部分 — write 有bug 不管了
 - 变量自动赋初值
 - Factor: T_NOT_FACTOR T_MINUS_FACTOR
+- 倒序改正序访问

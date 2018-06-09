@@ -9,10 +9,11 @@
 
 using namespace llvm;
 
-static Value *GetArrayRef(CodeGenContext &context, const std::string & id, Expression *index);
+static Value *GetArrayRef(CodeGenContext &context, const std::string &id, Expression *index);
 
 static Value *GetRecordRef(CodeGenContext &context, std::string id, std::string recordId);
-static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string & id);
+
+static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string &id);
 
 llvm::Value *Program::codeGen(CodeGenContext &context) {
     if (routine)
@@ -115,7 +116,8 @@ llvm::Value *TypeDefinition::codeGen(CodeGenContext &context) {
 
 llvm::Value *VarPart::codeGen(CodeGenContext &context) {
     if (varDeclList) {
-        return varDeclList->codeGen(context);
+        varDeclList->codeGen(context);
+        context.isGlobal = false;
     }
     return nullptr;
 }
@@ -135,7 +137,14 @@ llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
             std::cout << "Error: undefined type." << std::endl;
             exit(1);
         } else {
-            AllocaInst *alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
+            Value *alloc;
+            if (context.isGlobal) {
+                alloc = new llvm::GlobalVariable(*context.module, t, false, llvm::GlobalValue::ExternalLinkage,
+                                                 llvm::ConstantInt::get(llvm::Type::getInt32Ty(MyContext), 0, true),
+                                                 n->name);
+            } else {
+                alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
+            }
             context.local()[n->name] = alloc;
             context.varType()[n->name] = typeDecl;
         }
@@ -186,6 +195,7 @@ llvm::Type *ArrayTypeDecl::getType(CodeGenContext &context) {
     return llvm::ArrayType::get(elementType->getType(context, ""), range->getRange(context.constTable));
 }
 
+
 llvm::Type *RecordTypeDecl::getType(CodeGenContext &context, std::string &name) {
     if (context.module->getTypeByName(name))
         return context.module->getTypeByName(name);
@@ -206,8 +216,13 @@ llvm::Type *RecordTypeDecl::getType(CodeGenContext &context, std::string &name) 
 }
 
 llvm::Value *RoutinePart::codeGen(CodeGenContext &context) {
-    if (type == T_ROUTINE_FUNC || type == T_ROUTINE_PROC)
-        return routinePart->codeGen(context);
+    if (routinePart) routinePart->codeGen(context);
+    if (type == T_ROUTINE_FUNC) {
+        functionDecl->codeGen(context);
+    }
+    if (type == T_ROUTINE_PROC) {
+        procedureDecl->codeGen(context);
+    }
     if (type == T_EMPTY)
         return nullptr;
     if (type == T_PROC)
@@ -304,7 +319,6 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
     std::vector<Type *> argTypes;
     ParaDeclList *p = procedureHead->parameters->paraDeclList;
     while (p) {
-
         NameList *n;
         if (p->paraTypeList->type == ParaTypeList::T_VAL) {
             n = p->paraTypeList->valParaList->nameList;
@@ -372,6 +386,7 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 //    auto retVal = new LoadInst(alloc, "", false, context.currentBlock());
 //    llvm::ReturnInst::Create(MyContext, retVal, bblock
 //    );
+    llvm::ReturnInst::Create(MyContext, nullptr, context.currentBlock());
     context.popBlock();
 
     while (context.blocks.top() != parent)
@@ -497,7 +512,7 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
                     std::cout << "Reference must pass a variable." << std::endl;
                     exit(0);
                 }
-                if(p->expression->expr->term->factor->type == Factor::T_NAME) {
+                if (p->expression->expr->term->factor->type == Factor::T_NAME) {
                     auto name = p->expression->expr->term->factor->name;
                     if (context.constTable.isConst(name)) {
                         assert("const value" == "should not be referenced");
@@ -512,9 +527,14 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
                         break;
                     }
                 } else if (p->expression->expr->term->factor->type == Factor::T_ID_DOT_ID) {
-                    new llvm::StoreInst(tmp, GetRecordRef(context, p->expression->expr->term->factor->id, p->expression->expr->term->factor->recordId), false, context.currentBlock());
+                    new llvm::StoreInst(tmp, GetRecordRef(context, p->expression->expr->term->factor->id,
+                                                          p->expression->expr->term->factor->recordId), false,
+                                        context.currentBlock());
                 } else {
-                    new llvm::StoreInst(tmp, GetArrayRef(context, p->expression->expr->term->factor->expression->lastValue, p->expression->expr->term->factor->id), false, context.currentBlock());
+                    new llvm::StoreInst(tmp,
+                                        GetArrayRef(context, p->expression->expr->term->factor->expression->lastValue,
+                                                    p->expression->expr->term->factor->id), false,
+                                        context.currentBlock());
                 }
                 i++;
                 j++;
@@ -594,7 +614,7 @@ llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *IfStmt::codeGen(CodeGenContext &context) {
-    Function * currentFuction = context.blocks.top()->function;
+    Function *currentFuction = context.blocks.top()->function;
     Value *condition = expression->codeGen(context);
     BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", context.blocks.top()->function);
     BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", context.blocks.top()->function);
@@ -669,7 +689,7 @@ llvm::Value *RepeatStmt::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *Expression::codeGen(CodeGenContext &context) {
-    Value * res = nullptr;
+    Value *res = nullptr;
     if (type == T_EXPR) {
         res = expr->codeGen(context);
     } else {
@@ -678,27 +698,27 @@ llvm::Value *Expression::codeGen(CodeGenContext &context) {
         switch (type) {
             case T_EQ:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             case T_NE:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_NE,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             case T_LT:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLT,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             case T_GT:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGT,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             case T_LE:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SLE,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             case T_GE:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_SGE,
-                                             op1_val, op2_val, "", context.currentBlock());
+                                            op1_val, op2_val, "", context.currentBlock());
                 break;
             default:
                 res = nullptr;
@@ -833,7 +853,7 @@ static Value *GetRecordRef(CodeGenContext &context, std::string id, std::string 
 }
 
 
-static Value *GetArrayRef(CodeGenContext &context, const std::string & id, Expression *index) {
+static Value *GetArrayRef(CodeGenContext &context, const std::string &id, Expression *index) {
     auto idxList = std::vector<llvm::Value *>();
     idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
     auto p = context.blocks.top();
@@ -862,7 +882,7 @@ static Value *GetArrayRef(CodeGenContext &context, const std::string & id, Expre
     return nullptr;
 }
 
-static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string & id) {
+static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string &id) {
     auto idxList = std::vector<llvm::Value *>();
     idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
     auto p = context.blocks.top();
