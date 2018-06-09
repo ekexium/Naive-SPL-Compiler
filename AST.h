@@ -394,9 +394,9 @@ public:
 		if (type == T_RANGE) {
 			assert(upperBound->type == ConstValue::T_INTEGER);
 			assert(lowerBound->type == ConstValue::T_INTEGER);
-			return std::stoi(upperBound->value) - std::stoi(lowerBound->value);
+			return std::stoi(upperBound->value) - std::stoi(lowerBound->value) + 1;
 		} else {
-			return table.getInt(upperName) - table.getInt(lowerName);
+			return table.getInt(upperName) - table.getInt(lowerName) + 1;
 		}
 	}
 
