@@ -30,7 +30,6 @@ enum ConstType {
 class ConstTable {
 public:
 	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
-	std::map<std::string, int> nameCounts;
 
 	bool isConst(const std::string &name) {
 		if (table.find(name) == table.end()) return false;
