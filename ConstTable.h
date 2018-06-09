@@ -6,32 +6,108 @@
 #define SPLC_CONSTTABLE_H
 
 #include <string>
-#include <stack>
+#include <list>
 #include <map>
+#include <iostream>
 
-union ConstValueUnion {
-	double real;
-	int integer;
-	char ch;
+struct ConstValueUnion {
+	double real{};
+	int integer{};
+	char ch{};
+
+	explicit ConstValueUnion(int i) : integer(i) {}
+
+	explicit ConstValueUnion(double r) : real(r) {}
+
+	explicit ConstValueUnion(char c) : ch(c) {}
+
+};
+
+enum ConstType {
+	integer, real, ch
 };
 
 class ConstTable {
 public:
-	std::map <std::string, std::pair<int, std::stack<ConstValueUnion>>> table;
+	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
+	std::map<std::string, int> nameCounts;
 
-	int getInt(const std::string &name) {
-		return table.at(name).second.top().integer;
+	bool isConst(std::string name) {
+
 	}
 
-	double getReal(const std::string &name) {
-		return table.at(name).second.top().real;
+	void printTable() {
+		std::cout << "const table : \n============================";
+		for (auto bucket : table) {
+			std::cout << bucket.first << ": ";
+			for (auto item : bucket.second)
+				switch (item.first) {
+					case ConstType::integer:
+						std::cout << item.second.integer << ", ";
+						break;
+					case ConstType::real:
+						std::cout << item.second.real << ", ";
+						break;
+					case ConstType::ch:
+						std::cout << item.second.ch << ", ";
+						break;
+				}
+			std::cout << std::endl;
+		}
 	}
 
-	char getChar(const std::string &name) {
-		return table.at(name).second.top().ch;
+	int getInt(const std::string &name) const {
+		auto item = table.at(name).back();
+		assert(item.first == ConstType::integer);
+		return table.at(name).back().second.integer;
 	}
 
+	double getReal(const std::string &name) const {
+		auto item = table.at(name).back();
+		assert(item.first == ConstType::real);
+		return table.at(name).back().second.real;
+	}
 
+	char getChar(const std::string &name) const {
+		auto item = table.at(name).back();
+		assert(item.first == ConstType::ch);
+		return table.at(name).back().second.ch;
+	}
+
+	void addInt(const std::string &name, int i) {
+		if (table.find(name) != table.end()) {
+			table.at(name).push_back(std::pair(ConstType::integer, ConstValueUnion(i)));
+		} else {
+			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
+			table.at(name).push_back(std::make_pair(ConstType::integer, ConstValueUnion(i)));
+		}
+	}
+
+	void addReal(const std::string &name, double r) {
+		if (table.find(name) != table.end()) {
+			table.at(name).push_back(std::pair(ConstType::real, ConstValueUnion(r)));
+		} else {
+			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
+			table.at(name).push_back(std::make_pair(ConstType::real, ConstValueUnion(r)));
+		}
+	}
+
+	void addChar(const std::string &name, char c) {
+		if (table.find(name) != table.end()) {
+			table.at(name).push_back(std::pair(ConstType::ch, ConstValueUnion(c)));
+		} else {
+			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
+			table.at(name).push_back(std::make_pair(ConstType::ch, ConstValueUnion(c)));
+		}
+	}
+
+	void remove(const std::string &name) {
+		if (table.find(name) == table.end()) {
+			std::cerr << "Error: try to remove a non-existent const binding " << name << std::endl;
+		} else {
+			table.at(name).pop_back();
+		}
+	}
 };
 
 #endif //SPLC_CONSTTABLE_H

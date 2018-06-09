@@ -3,11 +3,14 @@ var i, j : integer;
 begin
 i := 1;
 j := 4;
-for i := 1 to 3 do
-begin
-    for j := 1 to 4 do
-        write(0);
-    writeln(0);
+if i > 0 then begin
+    if (j > 3) then begin
+        writeln(1);
+    end else begin
+        writeln(2);
+    end;
+end else begin
+    writeln(2);
 end;
 end
 .
