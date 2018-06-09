@@ -71,7 +71,7 @@
 "with"  return TOKEN(WITH);
 [a-zA-Z][_a-zA-Z0-9]* SaveToken; return N_ID;
 [0-9]+  SaveToken; return INTEGER;
-[0-9]+\.[0-9]* SaveToken; return REAL;
+([0-9])+"."([0-9])+ SaveToken; return REAL;
 \'.\' SaveToken; return CHAR;
 \'^'[^']*\' SaveToken; return STRING;
 . printf("Unknown token:%s\n", yytext); yyterminate();
