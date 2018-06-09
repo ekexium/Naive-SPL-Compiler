@@ -29,6 +29,13 @@ enum ConstType {
 
 class ConstTable {
 public:
+	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
+	std::map<std::string, int> nameCounts;
+	
+	bool isConst(std::string name) {
+
+	}
+
 	void printTable() {
 		std::cout << "const table : \n============================";
 		for (auto bucket : table) {
@@ -49,27 +56,25 @@ public:
 		}
 	}
 
-	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
-
-	int getInt(const std::string &name) {
+	int getInt(const std::string &name) const {
 		auto item = table.at(name).back();
 		assert(item.first == ConstType::integer);
 		return table.at(name).back().second.integer;
 	}
 
-	double getReal(const std::string &name) {
+	double getReal(const std::string &name) const {
 		auto item = table.at(name).back();
 		assert(item.first == ConstType::real);
 		return table.at(name).back().second.real;
 	}
 
-	char getChar(const std::string &name) {
+	char getChar(const std::string &name) const {
 		auto item = table.at(name).back();
 		assert(item.first == ConstType::ch);
 		return table.at(name).back().second.ch;
 	}
 
-	void setInt(const std::string &name, int i) {
+	void addInt(const std::string &name, int i) {
 		if (table.find(name) != table.end()) {
 			table.at(name).push_back(std::pair(ConstType::integer, ConstValueUnion(i)));
 		} else {
@@ -78,7 +83,7 @@ public:
 		}
 	}
 
-	void setReal(const std::string &name, double r) {
+	void addReal(const std::string &name, double r) {
 		if (table.find(name) != table.end()) {
 			table.at(name).push_back(std::pair(ConstType::real, ConstValueUnion(r)));
 		} else {
@@ -87,12 +92,20 @@ public:
 		}
 	}
 
-	void setChar(const std::string &name, char c) {
+	void addChar(const std::string &name, char c) {
 		if (table.find(name) != table.end()) {
 			table.at(name).push_back(std::pair(ConstType::ch, ConstValueUnion(c)));
 		} else {
 			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
 			table.at(name).push_back(std::make_pair(ConstType::ch, ConstValueUnion(c)));
+		}
+	}
+
+	void remove(const std::string &name) {
+		if (table.find(name) == table.end()) {
+			std::cerr << "Error: try to remove a non-existent const binding " << name << std::endl;
+		} else {
+			table.at(name).pop_back();
 		}
 	}
 };

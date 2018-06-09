@@ -73,6 +73,27 @@ llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
 	return new StoreInst(var, context.local()[name], false, context.currentBlock());
 }
 
+void ConstExprList::addToConstTable(ConstTable &table) {
+	switch (value->type) {
+		case ConstValue::T_INTEGER:
+			table.addInt(name, std::stoi(value->value));
+			break;
+		case ConstValue::T_REAL:
+			table.addReal(name, std::stod(value->value));
+			break;
+		case ConstValue::T_CHAR:
+			table.addChar(name, value->value[0]);
+			break;
+		default:
+			break;
+	}
+}
+
+void ConstExprList::removeFromConstTable(ConstTable &table) {
+	if (preList) preList->removeFromConstTable(table);
+	table.remove(name);
+}
+
 llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
 	switch (type) {
 		case ConstValue::T_INTEGER:
@@ -362,6 +383,10 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
 	routineHead->codeGen(context);
 	return routineBody->codeGen(context);
+}
+
+void SubRoutine::clearConstTable(ConstTable &table) {
+	routineHead->constPart->constExprList->removeFromConstTable(table);
 };
 
 llvm::Value *ParaDeclList::codeGen(CodeGenContext &context) {
