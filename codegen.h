@@ -16,6 +16,7 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/IRBuilder.h>
 #include "AST.h"
+#include "ConstTable.h"
 
 static llvm::LLVMContext MyContext;
 
@@ -45,7 +46,7 @@ public:
     std::stack<CodeGenBlock *> blocks;
     llvm::Module *module;
     std::map<std::string, FuncVars> funcVars;
-
+    ConstTable constTtable;
 
     CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
     ~CodeGenContext() {

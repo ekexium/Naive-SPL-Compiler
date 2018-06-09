@@ -377,7 +377,8 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 
 llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
 	routineHead->codeGen(context);
-	return routineBody->codeGen(context);
+	routineBody->codeGen(context);
+	clearConstTable(context.constTable);
 }
 
 void SubRoutine::clearConstTable(ConstTable &table) {
