@@ -31,7 +31,7 @@ class ConstTable {
 public:
 	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
 	std::map<std::string, int> nameCounts;
-	
+
 	bool isConst(std::string name) {
 
 	}

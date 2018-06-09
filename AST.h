@@ -334,7 +334,7 @@ public:
 
 	explicit TypeDecl(RecordTypeDecl *recordTypeDecl) : recordTypeDecl(recordTypeDecl) { type = T_RECORD_TYPE_DECLARE; }
 
-	llvm::Type *getType(CodeGenContext &context);
+	llvm::Type *getType(CodeGenContext &context, std::string name);
 
 
 	std::vector<Node *> getChildren() override {
@@ -416,6 +416,7 @@ public:
 		ch.emplace_back(elementType);
 		return ch;
 	}
+
 };
 
 class RecordTypeDecl : public AbstractStatement {
@@ -424,7 +425,7 @@ public:
 
 	explicit RecordTypeDecl(FieldDeclList *fieldDeclList) : fieldDeclList(fieldDeclList) {}
 
-	llvm::Type *getType(CodeGenContext &context);
+	llvm::Type *getType(CodeGenContext &context, std::string  & name);
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
