@@ -35,6 +35,7 @@ public:
     CodeGenBlock *preBlock;
     llvm::Function *function;
     std::map<std::string, llvm::Value *> locals;
+    std::map<std::string, TypeDecl *> varTypes;
     std::map<std::string, TypeDecl *> types;
     std::string outputFilename;
 
@@ -68,6 +69,7 @@ public:
     }
 
     std::map<std::string, llvm::Value *> & local() { return blocks.top()->locals; };
+    std::map<std::string, TypeDecl *> & varType() { return blocks.top()->varTypes; };
 
     std::map<std::string, TypeDecl *> type() { return blocks.top()->types; };
 

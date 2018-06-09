@@ -44,33 +44,30 @@ llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
     if (preList)
         preList->codeGen(context); //顺序？从前往后？从后往前？
     auto var = value->codeGen(context);
-//	AllocaInst *alloc = new AllocaInst(var->getType(), 0, name, context.currentBlock()); // 那个1是干什么的呢
-//	context.local()[name] = alloc;
-//	return new StoreInst(var, context.local()[name], false, context.currentBlock());
     context.local()[name] = var;
     addToConstTable(context.constTable);
     return var;
 }
 
 void ConstExprList::addToConstTable(ConstTable &table) {
-	switch (value->type) {
-		case ConstValue::T_INTEGER:
-			table.addInt(name, std::stoi(value->value));
-			break;
-		case ConstValue::T_REAL:
-			table.addReal(name, std::stod(value->value));
-			break;
-		case ConstValue::T_CHAR:
-			table.addChar(name, value->value[0]);
-			break;
-		default:
-			break;
-	}
+    switch (value->type) {
+        case ConstValue::T_INTEGER:
+            table.addInt(name, std::stoi(value->value));
+            break;
+        case ConstValue::T_REAL:
+            table.addReal(name, std::stod(value->value));
+            break;
+        case ConstValue::T_CHAR:
+            table.addChar(name, value->value[0]);
+            break;
+        default:
+            break;
+    }
 }
 
 void ConstExprList::removeFromConstTable(ConstTable &table) {
-	if (preList) preList->removeFromConstTable(table);
-	table.remove(name);
+    if (preList) preList->removeFromConstTable(table);
+    table.remove(name);
 }
 
 llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
@@ -135,6 +132,7 @@ llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
         } else {
             AllocaInst *alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
             context.local()[n->name] = alloc;
+            context.varType()[n->name] = typeDecl;
         }
         n = n->nameList;
     }
@@ -180,8 +178,7 @@ llvm::Type *SimpleTypeDecl::getType(CodeGenContext &context) {
 };
 
 llvm::Type *ArrayTypeDecl::getType(CodeGenContext &context) {
-//    return llvm::ArrayType::get(elementType->getType(context, ""), range->getRange());
-    return nullptr;
+    return llvm::ArrayType::get(elementType->getType(context, ""), range->getRange(context.constTable));
 }
 
 llvm::Type *RecordTypeDecl::getType(CodeGenContext &context, std::string &name) {
@@ -220,7 +217,6 @@ llvm::Value *FunctionDecl::codeGen(CodeGenContext &context) {
     std::vector<Type *> argTypes;
     ParaDeclList *p = functionHead->parameters->paraDeclList;
     while (p) {
-
         NameList *n;
         if (p->paraTypeList->type == ParaTypeList::T_VAL) {
             n = p->paraTypeList->valParaList->nameList;
@@ -258,6 +254,7 @@ llvm::Value *FunctionDecl::codeGen(CodeGenContext &context) {
                 auto go = new llvm::GlobalVariable(*context.module, p->paraTypeList->typeDecl->getType(context), false,
                                                    llvm::GlobalValue::ExternalLinkage, initial);
                 context.local()[n->name] = go;
+                context.varType()[n->name] = new TypeDecl(p->paraTypeList->typeDecl);
                 new llvm::StoreInst(args_values, go, false, context.currentBlock());
                 var.push_back(go);
                 place.push_back(i);
@@ -265,6 +262,7 @@ llvm::Value *FunctionDecl::codeGen(CodeGenContext &context) {
                 AllocaInst *alloc = new AllocaInst(p->paraTypeList->typeDecl->getType(context), 0, n->name,
                                                    context.currentBlock()); // 那个1是干什么的呢
                 context.local()[n->name] = alloc;
+                context.varType()[n->name] = new TypeDecl(p->paraTypeList->typeDecl);
                 new llvm::StoreInst(args_values, alloc, false, context.currentBlock());
             }
             i++;
@@ -340,6 +338,7 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
                 auto go = new llvm::GlobalVariable(*context.module, p->paraTypeList->typeDecl->getType(context), false,
                                                    llvm::GlobalValue::ExternalLinkage, initial);
                 context.local()[n->name] = go;
+                context.varType()[n->name] = new TypeDecl(p->paraTypeList->typeDecl);
                 new llvm::StoreInst(args_values, go, false, context.currentBlock());
                 var.push_back(go);
                 place.push_back(i);
@@ -347,6 +346,7 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
                 AllocaInst *alloc = new AllocaInst(p->paraTypeList->typeDecl->getType(context), 0, n->name,
                                                    context.currentBlock()); // 那个1是干什么的呢
                 context.local()[n->name] = alloc;
+                context.varType()[n->name] = new TypeDecl(p->paraTypeList->typeDecl);
                 new llvm::StoreInst(args_values, alloc, false, context.currentBlock());
             }
             i++;
@@ -377,41 +377,16 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
-	routineHead->codeGen(context);
-	routineBody->codeGen(context);
-	clearConstTable(context.constTable);
+    routineHead->codeGen(context);
+    routineBody->codeGen(context);
+    clearConstTable(context.constTable);
     return nullptr;
 }
 
 void SubRoutine::clearConstTable(ConstTable &table) {
-	routineHead->constPart->constExprList->removeFromConstTable(table);
+    if (routineHead->constPart->constExprList)
+        routineHead->constPart->constExprList->removeFromConstTable(table);
 };
-
-llvm::Value *ParaDeclList::codeGen(CodeGenContext &context) {
-    // var是引用
-    if (paraTypeList->type == ParaTypeList::T_VAL) {
-        NameList *n = paraTypeList->valParaList->nameList;
-        while (n) {
-            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 0, n->name,
-                                               context.currentBlock()); // 那个1是干什么的呢
-            context.local()[n->name] = alloc;
-            n = n->nameList;
-        }
-    } else {
-        NameList *n = paraTypeList->varParaList->nameList;
-        while (n) {
-            //            AllocaInst *alloc = new AllocaInst(paraTypeList->typeDecl->getType(context), 0, n->name,
-            //                                               context.currentBlock()); // 那个1是干什么的呢
-            context.local()[n->name] = nullptr;
-            //            context.blocks.top()->alias[n->name]
-            //            if(n->name == "j"){
-            //                std::cout << "ParaDecl.j" << std::endl;
-            //            }
-            n = n->nameList;
-        }
-    }
-    return nullptr;
-}
 
 llvm::Value *RoutineBody::codeGen(CodeGenContext &context) {
     return compoundStmt->codeGen(context);
@@ -519,6 +494,9 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
                     exit(0);
                 }
                 auto name = p->expression->expr->term->factor->name;
+                if (context.constTable.isConst(name)) {
+                    assert("const value" == "should not be referenced");
+                }
                 auto b = context.blocks.top();
                 while (b) {
                     if (b->locals.find(name) == b->locals.end()) {
@@ -584,7 +562,62 @@ llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
             b = b->preBlock;
             continue;
         }
-        return new llvm::StoreInst(rhs->codeGen(context), b->locals[id], false, context.currentBlock());
+        if (context.constTable.isConst(id)) {
+            assert("const value" == "should not be changed");
+        }
+        if (b->locals[id] == nullptr) {
+            std::cout << "Uninitialize variable: " << id << std::endl;
+        }
+        if (type == T_SIMPLE)
+            return new llvm::StoreInst(rhs->codeGen(context), b->locals[id], false, context.currentBlock());
+        else if (type == T_ARRAY) {
+            auto idxList = std::vector<llvm::Value *>();
+            idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
+            assert(b->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
+            auto ptr = b->locals[id]; // ??
+            Type *t = b->varTypes[id]->getType(context, id);
+            Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32,
+                                                                              b->varTypes[id]->arrayTypeDecl->range->getLowerBound(
+                                                                                      context.constTable), false));
+            auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, index->codeGen(context),
+                                                       lowerBound, "", context.currentBlock());
+            idxList.push_back(second);
+            GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                                  context.currentBlock());
+            return new llvm::StoreInst(rhs->codeGen(context), elePtr, false, context.currentBlock());
+        } else {
+            Value *ptr;
+            std::vector<llvm::Value *> idxList;
+
+                assert(b->varTypes[id]->type == TypeDecl::T_RECORD_TYPE_DECLARE);
+                FieldDeclList *fieldDeclList = b->varTypes[id]->recordTypeDecl->fieldDeclList;
+                int i = 0;
+                bool flag = false;
+                while (fieldDeclList && !flag) {
+                    NameList *n = fieldDeclList->fieldDecl->nameList;
+                    while (n) {
+                        if (n->name == recordId) {
+                            flag = true;
+                            break;
+                        }
+                        i++;
+                        n = n->nameList;
+                    }
+                    fieldDeclList = fieldDeclList->preList;
+                }
+                if (!flag) {
+                    assert("record id" == "not in record member");
+                }
+                auto first = llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
+                auto second = llvm::ConstantInt::get(MyContext, llvm::APInt(32, i, false));
+                idxList.push_back(first);
+                idxList.push_back(second);
+                ptr = b->locals[id]; // ??
+                Type *t = b->varTypes[id]->getType(context, id);
+                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                                      context.currentBlock());
+                return new StoreInst(rhs->codeGen(context), elePtr, false, context.currentBlock());
+        }
     }
     return nullptr;
 }
@@ -735,9 +768,9 @@ llvm::Value *Term::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *Factor::codeGen(CodeGenContext &context) {
+    auto p = context.blocks.top();
     switch (type) {
         case T_NAME: {
-            auto p = context.blocks.top();
             while (p) {
                 if (p->locals.find(name) == p->locals.end()) {
                     p = p->preBlock;
@@ -746,7 +779,7 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
                 if (p->locals[name] == nullptr) {
                     std::cout << "Uninitialize variable: " << name << std::endl;
                 }
-                if(context.constTable.isConst(name)) return p->locals[name];
+                if (context.constTable.isConst(name)) return p->locals[name];
                 return new llvm::LoadInst(p->locals[name], "", false, context.currentBlock()); // ??
             }
             std::cout << "Undefined variable: " << name << std::endl;
@@ -760,9 +793,78 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
             return nullptr; // not finished
         case T_NAME_ARGS:
             return funcGen(context, name, argsList);
+        case T_ID_DOT_ID: {
+            Value *ptr;
+            std::vector<llvm::Value *> idxList;
+            while (p) {
+                if (p->locals.find(id) == p->locals.end()) {
+                    p = p->preBlock;
+                    continue;
+                }
+                if (p->locals[id] == nullptr) {
+                    std::cout << "Uninitialize variable: " << id << std::endl;
+                }
+//                if(context.constTable.isConst(name)) return p->locals[name];
+                assert(p->varTypes[id]->type == TypeDecl::T_RECORD_TYPE_DECLARE);
+                FieldDeclList *fieldDeclList = p->varTypes[id]->recordTypeDecl->fieldDeclList;
+                int i = 0;
+                bool flag = false;
+                while (fieldDeclList && !flag) {
+                    NameList *n = fieldDeclList->fieldDecl->nameList;
+                    while (n) {
+                        if (n->name == recordId) {
+                            flag = true;
+                            break;
+                        }
+                        i++;
+                        n = n->nameList;
+                    }
+                    fieldDeclList = fieldDeclList->preList;
+                }
+                if (!flag) {
+                    assert("record id" == "not in record member");
+                }
+                auto first = llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
+                auto second = llvm::ConstantInt::get(MyContext, llvm::APInt(32, i, false));
+                idxList.push_back(first);
+                idxList.push_back(second);
+                ptr = p->locals[id]; // ??
+                Type *t = p->varTypes[id]->getType(context, id);
+                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                                      context.currentBlock());
+                return new LoadInst(elePtr, "", false, context.currentBlock());
+            }
+            assert("undefined variable" == "");
+            break;
+        }
+        case T_ID_EXPR: {
+            auto idxList = std::vector<llvm::Value *>();
+            idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
+            while (p) {
+                if (p->locals.find(id) == p->locals.end()) {
+                    p = p->preBlock;
+                    continue;
+                }
+                if (p->locals[id] == nullptr) {
+                    std::cout << "Uninitialize variable: " << id << std::endl;
+                }
+                assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
+
+                auto ptr = p->locals[id]; // ??
+                Type *t = p->varTypes[id]->getType(context, id);
+                Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32, p->varTypes[id]->arrayTypeDecl->range->getLowerBound(context.constTable), false));
+                auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, expression->codeGen(context),
+                                                           lowerBound, "", context.currentBlock());
+                idxList.push_back(second);
+                GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
+                                                                      context.currentBlock());
+                return new LoadInst(elePtr, "", false, context.currentBlock());
+            }
+        }
         default:
             return nullptr;
     }
+    return nullptr;
 }
 
 llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
