@@ -48,8 +48,9 @@ public:
     llvm::Module *module;
     std::map<std::string, FuncVars> funcVars;
     ConstTable constTable;
+    bool isGlobal;
 
-    CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
+    CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr), isGlobal(true) {}
     ~CodeGenContext() {
         delete module;
     }
