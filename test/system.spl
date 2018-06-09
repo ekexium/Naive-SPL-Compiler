@@ -1,31 +1,19 @@
 program system_functions;
 
 
-function abs(x:integer):integer;
+function pred__(x:char):integer;
 begin
-    if (x < 0) then begin abs := -x end
-    else begin abs := x; end;
+    pred__ := x - 1;
 end;
 
-function odd(x:integer):boolean;
+function sqr__(x:integer):integer;
 begin
-    if (x % 2 == 0) then begin odd := true end
-    else begin odd := false; end;
+    sqr__ := x * x;
 end;
 
-function pred(x:char):pred;
+function succ__(x:integer):integer;
 begin
-    pred := x - 1;
-end;
-
-function sqr(x:integer):integer;
-begin
-    sqr := x * x;
-end;
-
-function sucsc(x:integer):integer;
-begin
-    sucsc:=x+1;
+    succ__:=x+1;
 end
 ;
 
