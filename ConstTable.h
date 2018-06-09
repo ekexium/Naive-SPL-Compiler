@@ -76,7 +76,7 @@ public:
 
 	void addInt(const std::string &name, int i) {
 		if (table.find(name) != table.end()) {
-			table.at(name).push_back(std::pair(ConstType::integer, ConstValueUnion(i)));
+			table.at(name).push_back(std::make_pair(ConstType::integer, ConstValueUnion(i)));
 		} else {
 			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
 			table.at(name).push_back(std::make_pair(ConstType::integer, ConstValueUnion(i)));
@@ -85,7 +85,7 @@ public:
 
 	void addReal(const std::string &name, double r) {
 		if (table.find(name) != table.end()) {
-			table.at(name).push_back(std::pair(ConstType::real, ConstValueUnion(r)));
+			table.at(name).push_back(std::make_pair(ConstType::real, ConstValueUnion(r)));
 		} else {
 			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
 			table.at(name).push_back(std::make_pair(ConstType::real, ConstValueUnion(r)));
@@ -94,7 +94,7 @@ public:
 
 	void addChar(const std::string &name, char c) {
 		if (table.find(name) != table.end()) {
-			table.at(name).push_back(std::pair(ConstType::ch, ConstValueUnion(c)));
+			table.at(name).push_back(std::make_pair(ConstType::ch, ConstValueUnion(c)));
 		} else {
 			table.insert(std::make_pair(name, std::list<std::pair<ConstType, ConstValueUnion>>()));
 			table.at(name).push_back(std::make_pair(ConstType::ch, ConstValueUnion(c)));
