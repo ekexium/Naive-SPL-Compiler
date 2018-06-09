@@ -1,5 +1,8 @@
 program system_functions;
-
+var 
+    a : array[-5..5] of integer;
+    i : integer;
 begin
-    writeln(abs(0-2));
+    for i := 0-5 to 5 do a[i] := i;
+    for i := 0-5 to 5 do writeln(a[i]);
 end.
