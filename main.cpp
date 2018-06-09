@@ -26,8 +26,8 @@ void printAST(Node *node) {
 void doNothing(Node *node) {}
 
 int main(int argc, char **argv) {
-	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/test3.spl";
-	//	std::string sourceFile = "/Users/xwy/Downloads/test_examples/test1.spl";
+//	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/test3.spl";
+	std::string sourceFile = "/Users/xwy/Downloads/test_examples/test1.spl";
 	extern FILE *yyin;
 	yyin = fopen(sourceFile.c_str(), "r");
 	yyparse();

@@ -67,7 +67,7 @@ public:
 
 	Program(ProgramHead *programHead, Routine *routine) : programHead(programHead), routine(routine) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -102,7 +102,7 @@ public:
 
 	Routine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead), routineBody(routineBody) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -121,7 +121,7 @@ public:
 	SubRoutine(RoutineHead *routineHead, RoutineBody *routineBody) : routineHead(routineHead),
 																	 routineBody(routineBody) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -144,7 +144,7 @@ public:
 				RoutinePart *routinePart) : labelPart(labelPart), constPart(constPart), typePart(typePart),
 											varPart(varPart), routinePart(routinePart) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -174,7 +174,7 @@ public:
 
 	explicit ConstPart(ConstExprList *constExprList) : constExprList(constExprList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -195,7 +195,7 @@ public:
 																				 preList(preList),
 																				 value(value) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -240,7 +240,7 @@ public:
 			return new ConstValue("-" + value, type);
 	}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -260,7 +260,7 @@ public:
 
 	explicit TypePart(TypeDeclList *typeDeclList) : typeDeclList(typeDeclList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -278,7 +278,7 @@ public:
 	TypeDeclList(TypeDeclList *preList, TypeDefinition *typeDefinition) : preList(preList),
 																		  typeDefinition(typeDefinition) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -295,7 +295,7 @@ public:
 
 	TypeDefinition(std::string name, TypeDecl *typeDecl) : name(std::move(name)), typeDecl(typeDecl) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -468,7 +468,7 @@ public:
 
 	explicit VarPart(VarDeclList *varDeclList) : varDeclList(varDeclList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -484,7 +484,7 @@ public:
 
 	VarDeclList(VarDeclList *preList, VarDecl *varDecl) : preList(preList), varDecl(varDecl) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -502,7 +502,7 @@ public:
 
 	VarDecl(NameList *nameList, TypeDecl *typeDecl) : nameList(nameList), typeDecl(typeDecl) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -541,7 +541,7 @@ public:
 
 	explicit RoutinePart(int type) : type(type) { assert(type == T_EMPTY); }
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -560,7 +560,7 @@ public:
 	FunctionDecl(FunctionHead *functionHead, SubRoutine *subRoutine) : functionHead(functionHead),
 																	   subRoutine(subRoutine) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -601,7 +601,7 @@ public:
 	ProcedureDecl(ProcedureHead *procedureHead, SubRoutine *subRoutine) : procedureHead(procedureHead),
 																		  subRoutine(subRoutine) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -652,7 +652,7 @@ public:
 	ParaDeclList(ParaDeclList *paraDeclList, ParaTypeList *paraTypeList) : paraDeclList(paraDeclList),
 																		   paraTypeList(paraTypeList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -720,7 +720,7 @@ public:
 
 	explicit RoutineBody(CompoundStmt *compoundStmt) : compoundStmt(compoundStmt) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -735,7 +735,7 @@ public:
 
 	explicit CompoundStmt(StmtList *stmtList) : stmtList(stmtList) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -751,7 +751,7 @@ public:
 
 	StmtList(StmtList *preList, Stmt *stmt) : preList(preList), stmt(stmt) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -773,7 +773,7 @@ public:
 		assert(type == T_LABELED || type == T_UNLABELED);
 	}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -823,7 +823,7 @@ public:
 
 	explicit NonLabelStmt(GotoStmt *gotoStmt) : gotoStmt(gotoStmt) { type = T_GOTO; }
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -861,7 +861,7 @@ public:
 																		recordId(std::move(recordId)),
 																		type(T_RECORD) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -912,7 +912,7 @@ public:
 
 	explicit ProcStmt(Factor *factor) : factor(factor), type(T_READ) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -941,7 +941,7 @@ public:
 	IfStmt(Expression *expression, Stmt *stmt, ElseClause *elseClause) : expression(expression), stmt(stmt),
 																		 elseClause(elseClause) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -959,7 +959,7 @@ public:
 
 	explicit ElseClause(Stmt *stmt) : stmt(stmt) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -975,7 +975,7 @@ public:
 
 	RepeatStmt(StmtList *stmtList, Expression *untilCondition) : stmtList(stmtList), untilCondition(untilCondition) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -992,7 +992,7 @@ public:
 
 	WhileStmt(Expression *whileCondition, Stmt *stmt) : whileCondition(whileCondition), stmt(stmt) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -1015,7 +1015,7 @@ public:
 			: loopId(std::move(loopId)), firstBound(firstBound), direction(direction), secondBound(secondBound),
 			  stmt(stmt) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -1151,7 +1151,7 @@ public:
 
 	explicit Expression(Expr *expr) : expr(expr), type(T_EXPR) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 
 	std::vector<Node *> getChildren() override {
@@ -1179,7 +1179,7 @@ public:
 
 	explicit Expr(Term *term) : term(term), type(T_TERM) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -1208,7 +1208,7 @@ public:
 
 	explicit Term(Factor *factor) : factor(factor), type(T_FACTOR) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();
@@ -1283,7 +1283,7 @@ public:
 	Factor(std::string id, std::string recordId) : id(std::move(id)), recordId(std::move(recordId)),
 												   type(T_ID_DOT_ID) {}
 
-	llvm::Value *codeGen(CodeGenContext &context);
+	llvm::Value *codeGen(CodeGenContext &context) override ;
 
 	std::vector<Node *> getChildren() override {
 		auto ch = std::vector<Node *>();

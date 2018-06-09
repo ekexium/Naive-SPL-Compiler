@@ -86,6 +86,8 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
     InitializeAllAsmPrinters();
 
     auto TargetTriple = sys::getDefaultTargetTriple();
+//    auto TargetTriple = sys::getProcessTriple();
+//    std::string TargetTriple = "mips-apple-darwin17.6.0";
     module->setTargetTriple(TargetTriple);
 
     std::string Error;
