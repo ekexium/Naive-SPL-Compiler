@@ -1302,7 +1302,7 @@ public:
 			//			sysFunction = st;
 			if (st == "succ" || st == "abs" || st == "odd" || st == "pred" || st == "sqr") {
 				name = st + "__";
-				type = T_NAME;
+				this->type = T_NAME_ARGS;
 			}
 		}
 	}

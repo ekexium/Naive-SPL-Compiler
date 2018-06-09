@@ -1,12 +1,6 @@
 program system_functions;
 
 
-function odd__(x:integer):boolean;
-begin
-    if x % 2 == 0 begin odd__ := true
-    else odd__ := false;
-end;
-
 function pred__(x:char):integer;
 begin
     pred__ := x - 1;
