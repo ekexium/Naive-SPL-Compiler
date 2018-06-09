@@ -10,17 +10,8 @@
 using namespace llvm;
 
 llvm::Value *Program::codeGen(CodeGenContext &context) {
-    //    std::vector<Type*> argTypes;
-    //    FunctionType *ftype = FunctionType::get(Type::getVoidTy(MyContext), makeArrayRef(argTypes), false);
-    //    Function * mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", context.module);
-    //    BasicBlock *bblock = BasicBlock::Create(MyContext, "entry", mainFunction, 0);
-    /* Push a new variable/block context */
-    //    context.pushBlock(bblock);
-    //    context.blocks.top()->function = mainFunction;
     if (routine)
-        routine->codeGen(context); // Null ???
-    //    ReturnInst::Create(MyContext, bblock);
-    //    context.popBlock();
+        routine->codeGen(context);
     return nullptr;
 }
 
@@ -49,21 +40,6 @@ llvm::Value *ConstPart::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
-//static Type *typeOf(const int type) {
-//    switch (type) {
-//        case ConstValue::T_INTEGER:
-//            return Type::getInt32Ty(MyContext);
-//        case ConstValue::T_CHAR:
-//            return Type::getInt8Ty(MyContext); // No char?
-//        case ConstValue::T_REAL:
-//            return Type::getDoubleTy(MyContext);
-//        case ConstValue::T_STRING:
-//            return nullptr; // ?????????/ Array?
-//        default:
-//            return nullptr;
-//    }
-//}
-
 llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
     if (preList)
         preList->codeGen(context); //顺序？从前往后？从后往前？
@@ -86,9 +62,9 @@ llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
         case ConstValue::T_SYS_CON:
             if (value == "maxint")
                 return ConstantInt::get(Type::getInt32Ty(MyContext), 2147483647, true);
-            else if (value == "false")
-                return ConstantInt::get(Type::getInt1Ty(MyContext), 1, true);
             else if (value == "true")
+                return ConstantInt::get(Type::getInt1Ty(MyContext), 1, true);
+            else if (value == "false")
                 return ConstantInt::get(Type::getInt1Ty(MyContext), 0, true);
             return nullptr;
         default:
