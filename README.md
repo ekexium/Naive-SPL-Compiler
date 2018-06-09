@@ -14,3 +14,4 @@ A naive SPL compiler implementation in C++.
 - 变量自动赋初值
 - Factor: T_NOT_FACTOR T_MINUS_FACTOR
 - 倒序改正序访问
+- 调用的时候传指针，assign的时候注意（应该是所有load-store注意），创建函数时arg type改一下

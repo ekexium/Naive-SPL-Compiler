@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <map>
+#include <set>
 #include <vector>
 #include <stack>
 #include <utility>
@@ -21,6 +22,7 @@
 static llvm::LLVMContext MyContext;
 
 class Node;
+
 class FunctionHead;
 
 class FuncVars {
@@ -37,6 +39,7 @@ public:
     std::map<std::string, llvm::Value *> locals;
     std::map<std::string, TypeDecl *> varTypes;
     std::map<std::string, TypeDecl *> types;
+    std::set<std::string> references;
     std::string outputFilename;
 
     explicit CodeGenBlock(llvm::BasicBlock *block, CodeGenBlock *preBlock) : block(block), preBlock(preBlock) {}
@@ -51,13 +54,14 @@ public:
     bool isGlobal;
 
     CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr), isGlobal(true) {}
+
     ~CodeGenContext() {
         delete module;
     }
 
     void pushBlock(llvm::BasicBlock *block) {
         CodeGenBlock *top = nullptr;
-        if(!blocks.empty()) {
+        if (!blocks.empty()) {
             top = blocks.top();
         }
         blocks.push(new CodeGenBlock(block, top));
@@ -68,9 +72,21 @@ public:
         blocks.pop();
         delete top;
     }
+    CodeGenBlock * isReferece(std::string var) {
+        CodeGenBlock * p = blocks.top();
+        while (p) {
+            if(p->references.find(var)!= p->references.end())
+                return p;
+            p = p->preBlock;
+        }
+        return nullptr;
+    }
 
-    std::map<std::string, llvm::Value *> & local() { return blocks.top()->locals; };
-    std::map<std::string, TypeDecl *> & varType() { return blocks.top()->varTypes; };
+    std::map<std::string, llvm::Value *> &local() { return blocks.top()->locals; };
+
+    std::map<std::string, TypeDecl *> &varType() { return blocks.top()->varTypes; };
+
+    std::set<std::string> &reference() { return blocks.top()->references; };
 
     std::map<std::string, TypeDecl *> type() { return blocks.top()->types; };
 
