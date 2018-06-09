@@ -14,4 +14,4 @@ output
 output.s
 test.out
 test.s
-test/*
+test
