@@ -9,8 +9,6 @@
 #include <stack>
 #include <map>
 
-using namespace std;
-
 union ConstValueUnion {
 	double real;
 	int integer;
@@ -18,18 +16,18 @@ union ConstValueUnion {
 };
 
 class ConstTable {
-	map <string, stack<ConstValueUnion>> table;
+	std::map <std::string, std::stack<ConstValueUnion>> table;
 
-	int getInt(const string &name) {
+	int getInt(const std::string &name) {
 		return table.at(name).top().integer;
 	}
 
-	double getReal(const string &name) {
+	double getReal(const std::string &name) {
 
 	}
 
-	char getChar(const string &name) {
-		
+	char getChar(const std::string &name) {
+
 	}
 };
 
