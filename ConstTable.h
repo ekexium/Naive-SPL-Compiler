@@ -30,10 +30,10 @@ enum ConstType {
 class ConstTable {
 public:
 	std::map<std::string, std::list<std::pair<ConstType, ConstValueUnion>>> table;
-	std::map<std::string, int> nameCounts;
 
-	bool isConst(std::string name) {
-
+	bool isConst(const std::string &name) {
+		if (table.find(name) == table.end()) return false;
+		return !table.at(name).empty();
 	}
 
 	void printTable() {
@@ -105,6 +105,7 @@ public:
 		if (table.find(name) == table.end()) {
 			std::cerr << "Error: try to remove a non-existent const binding " << name << std::endl;
 		} else {
+			assert(!table.at(name).empty());
 			table.at(name).pop_back();
 		}
 	}
