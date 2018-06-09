@@ -1,10 +1,5 @@
 program system_functions;
 
-function abs__(x:integer):integer;
-begin
-    if (x < 0) then begin abs__ := -x end
-    else begin abs__ := x; end;
-end;
 
 function odd__(x:integer):boolean;
 begin
