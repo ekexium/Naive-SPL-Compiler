@@ -226,7 +226,7 @@ public:
 	ConstValue(std::string value, int type) : value(std::move(value)), type(type) {
 		assert(type >= 1 && type <= 5);
 		if (type == T_CHAR)
-			value = value[1];
+			this->value = this->value.substr(1,1);
 		//		no T_STRING
 		//		if (type == T_STRING)
 	}
@@ -249,7 +249,7 @@ public:
 	}
 
 	std::string getInfo() override {
-		return value;
+		return std::to_string(type) + ":" + value;
 	}
 };
 
