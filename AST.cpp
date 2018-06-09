@@ -377,10 +377,10 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
-
 	routineHead->codeGen(context);
 	routineBody->codeGen(context);
 	clearConstTable(context.constTable);
+    return nullptr;
 }
 
 void SubRoutine::clearConstTable(ConstTable &table) {
@@ -470,7 +470,7 @@ void getPrintArgs(std::vector<llvm::Value *> &printf_args, std::string &printf_f
 //            std::cout << "SysFuncCall write variable previous name" << arg_val->getName().str() << std::endl;
             printf_args.push_back(arg_val);
         } else if (arg_val->getType()->isDoubleTy() /*== llvm::Type::getDoubleTy(llvm::getGlobalContext())*/) {
-            printf_format += "%lf";
+            printf_format += "%lf ";
             printf_args.push_back(arg_val);
         } else if (arg_val->getType() == Type::getInt8Ty(MyContext)) {
             printf_format += "%c ";
