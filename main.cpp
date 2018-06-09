@@ -29,14 +29,16 @@ void printAST(Node *node) {
 void doNothing(Node *node) {}
 
 int main(int argc, char **argv) {
-//	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/demo.spl";
+//    std::string sourcePath = "/Users/qzq/code/compiler/splc/test/";
+//    auto sourceFile = sourcePath + argv[1];
+//	std::string sourceFile = "/Users/qzq/code/compiler/splc/test/test7.spl";
     std::string sourceFile = "/Users/xwy/Downloads/test_examples/test1.spl";
     yyin = fopen(sourceFile.c_str(), "r");
     yyparse();
 
     auto root = astRoot;
     //	install system functions
-//	installSystemFunctions(root);
+	installSystemFunctions(root);
     //visualize
     astOut.open("ast.dot", std::ios::out | std::ios::trunc);
     astOut << "graph g{" << std::endl;

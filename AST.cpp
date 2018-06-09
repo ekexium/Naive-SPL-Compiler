@@ -110,7 +110,25 @@ llvm::Value *TypeDeclList::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *TypeDefinition::codeGen(CodeGenContext &context) {
-    context.type()[name] = typeDecl; //需要查找已经有了么
+    switch (typeDecl->type) {
+        case TypeDecl::T_SIMPLE_TYPE_DECLARE: {
+            if (typeDecl->simpleTypeDecl->type == SimpleTypeDecl::T_TYPE_NAME) {
+                auto b = context.isType(typeDecl->simpleTypeDecl->name);
+                if (b) context.type()[name] = b->types[typeDecl->simpleTypeDecl->name];
+                else context.type()[name] = typeDecl;
+            }
+            break;
+        }
+        case TypeDecl::T_ARRAY_TYPE_DECLARE:
+            context.type()[name] = typeDecl;
+            break;
+        case TypeDecl::T_RECORD_TYPE_DECLARE:
+            context.type()[name] = typeDecl;
+            typeDecl->recordTypeDecl->getType(context, name);
+            break;
+        default:
+            break;
+    }
     return nullptr;
 }
 
@@ -139,14 +157,21 @@ llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
         } else {
             Value *alloc;
             if (context.isGlobal) {
+                auto zero = Constant::getNullValue(t);
                 alloc = new llvm::GlobalVariable(*context.module, t, false, llvm::GlobalValue::ExternalLinkage,
-                                                 llvm::ConstantInt::get(llvm::Type::getInt32Ty(MyContext), 0, true),
-                                                 n->name);
+                                                 zero, n->name);
             } else {
                 alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
             }
             context.local()[n->name] = alloc;
             context.varType()[n->name] = typeDecl;
+
+            if (typeDecl->type == TypeDecl::T_SIMPLE_TYPE_DECLARE &&
+                typeDecl->simpleTypeDecl->type == SimpleTypeDecl::T_TYPE_NAME) {
+                auto b = context.isType(typeDecl->simpleTypeDecl->name);
+                if (b) context.varType()[n->name] = b->types[typeDecl->simpleTypeDecl->name];
+
+            }
         }
         n = n->nameList;
     }
@@ -509,7 +534,7 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
 //        auto i = context.funcVars[procId].storePlace.begin();
     auto j = context.funcVars[procId].position.begin();
     while (p) {
-        if (j!= context.funcVars[procId].position.end() && k == *j) {
+        if (j != context.funcVars[procId].position.end() && k == *j) {
             auto zero = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(MyContext));
 
             std::vector<llvm::Value *> indices;
@@ -537,32 +562,38 @@ llvm::Value *funcGen(CodeGenContext &context, std::string &procId, ArgsList *arg
                         b = b->preBlock;
                         continue;
                     }
-                    GetElementPtrInst * var_ref = GetElementPtrInst::Create(nullptr,
-                                                                            b->locals[name],
-                                                                            makeArrayRef(indices), "",
-                                                                            context.currentBlock());
+                    GetElementPtrInst *var_ref;
+                    if (context.isReferece(name)) {
+                        auto tmp = new LoadInst(b->locals[name], "", false, context.currentBlock());
+                        var_ref = GetElementPtrInst::Create(nullptr,
+                                                            tmp,
+                                                            makeArrayRef(indices), "",
+                                                            context.currentBlock());
+                    } else {
+                        var_ref = GetElementPtrInst::Create(nullptr,
+                                                            b->locals[name],
+                                                            makeArrayRef(indices), "",
+                                                            context.currentBlock());
+                    }
                     args.push_back(var_ref);
                     break;
                 }
             } else if (p->expression->expr->term->factor->type == Factor::T_ID_DOT_ID) {
-                GetElementPtrInst * var_ref = GetElementPtrInst::Create(Type::getInt32Ty(MyContext),
-                                                                        p->expression->codeGen(context),
-                                                                        makeArrayRef(indices), "",
-                                                                        context.currentBlock());
+                GetElementPtrInst *var_ref = GetElementPtrInst::Create(Type::getInt32Ty(MyContext),
+                                                                       GetRecordRef(context,
+                                                                                    p->expression->expr->term->factor->id,
+                                                                                    p->expression->expr->term->factor->recordId),
+                                                                       makeArrayRef(indices), "",
+                                                                       context.currentBlock());
                 args.push_back(var_ref);
-//                new llvm::StoreInst(tmp, GetRecordRef(context, p->expression->expr->term->factor->id,
-//                                                      p->expression->expr->term->factor->recordId), false,
-//                                    context.currentBlock());
             } else {
-                GetElementPtrInst * var_ref = GetElementPtrInst::Create(Type::getInt32Ty(MyContext),
-                                                                        p->expression->codeGen(context),
-                                                                        makeArrayRef(indices), "",
-                                                                        context.currentBlock());
+                GetElementPtrInst *var_ref = GetElementPtrInst::Create(Type::getInt32Ty(MyContext),
+                                                                       GetArrayRef(context,
+                                                                                   p->expression->expr->term->factor->id,
+                                                                                   p->expression->expr->term->factor->expression),
+                                                                       makeArrayRef(indices), "",
+                                                                       context.currentBlock());
                 args.push_back(var_ref);
-//                new llvm::StoreInst(tmp,
-//                                    GetArrayRef(context, p->expression->expr->term->factor->expression->lastValue,
-//                                                p->expression->expr->term->factor->id), false,
-//                                    context.currentBlock());
             }
             j++;
         } else {
@@ -762,7 +793,7 @@ llvm::Value *Expression::codeGen(CodeGenContext &context) {
                 break;
         }
     }
-    lastValue = res;
+//    lastValue = res;
     return res;
 }
 
@@ -771,13 +802,22 @@ llvm::Value *Expr::codeGen(CodeGenContext &context) {
         return term->codeGen(context);
     Value *op1_val = expr->codeGen(context);
     Value *op2_val = term->codeGen(context);
+    assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_PLUS:
-            return llvm::BinaryOperator::Create(llvm::Instruction::Add,
-                                                op1_val, op2_val, "", context.currentBlock());
+            if (op1_val->getType() == Type::getDoubleTy(MyContext))
+                return llvm::BinaryOperator::Create(llvm::Instruction::FAdd,
+                                                    op1_val, op2_val, "", context.currentBlock());
+            else
+                return llvm::BinaryOperator::Create(llvm::Instruction::Add,
+                                                    op1_val, op2_val, "", context.currentBlock());
         case T_MINUS:
-            return llvm::BinaryOperator::Create(llvm::Instruction::Sub,
-                                                op1_val, op2_val, "", context.currentBlock());
+            if (op1_val->getType() == Type::getDoubleTy(MyContext))
+                return llvm::BinaryOperator::Create(llvm::Instruction::FSub,
+                                                    op1_val, op2_val, "", context.currentBlock());
+            else
+                return llvm::BinaryOperator::Create(llvm::Instruction::Sub,
+                                                    op1_val, op2_val, "", context.currentBlock());
         case T_OR:
             return llvm::BinaryOperator::Create(llvm::Instruction::Or,
                                                 op1_val, op2_val, "", context.currentBlock());
@@ -791,10 +831,15 @@ llvm::Value *Term::codeGen(CodeGenContext &context) {
         return factor->codeGen(context);
     Value *op1_val = term->codeGen(context);
     Value *op2_val = factor->codeGen(context);
+    assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_MUL:
-            return llvm::BinaryOperator::Create(llvm::Instruction::Mul,
-                                                op1_val, op2_val, "", context.currentBlock());
+            if (op1_val->getType() == Type::getDoubleTy(MyContext))
+                return llvm::BinaryOperator::Create(llvm::Instruction::FMul,
+                                                    op1_val, op2_val, "", context.currentBlock());
+            else
+                return llvm::BinaryOperator::Create(llvm::Instruction::Mul,
+                                                    op1_val, op2_val, "", context.currentBlock());
         case T_DIV:
             return llvm::BinaryOperator::Create(llvm::Instruction::SDiv,
                                                 op1_val, op2_val, "", context.currentBlock());
@@ -835,10 +880,52 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
             return constValue->codeGen(context);
         case T_EXPR:
             return expression->codeGen(context);
-        case T_NOT_FACTOR:
-            return nullptr; // not finished
+        case T_NOT_FACTOR: {
+            Value *tmp;
+            assert(factor->type == T_NAME);
+            Function *currentFuction = context.blocks.top()->function;
+            Value *v = factor->codeGen(context);
+            BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", context.blocks.top()->function);
+            BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", context.blocks.top()->function);
+            BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", context.blocks.top()->function);
+            llvm::Instruction *ret = llvm::BranchInst::Create(btrue, bfalse, v, context.currentBlock());
+            context.pushBlock(btrue);
+            context.blocks.top()->function = currentFuction;
+            if (v->getType() == Type::getDoubleTy(MyContext)) {
+                tmp = ConstantFP::get(MyContext, llvm::APFloat(0.0));
+            } else {
+                tmp = ConstantInt::get(MyContext, llvm::APInt(32, 0, false));
+            }
+            llvm::BranchInst::Create(bmerge, context.currentBlock());
+            context.popBlock();
+            context.pushBlock(bfalse);
+            context.blocks.top()->function = currentFuction;
+            if (v->getType() == Type::getDoubleTy(MyContext)) {
+                tmp = ConstantFP::get(MyContext, llvm::APFloat(1.0));
+            } else {
+                tmp = ConstantInt::get(MyContext, llvm::APInt(32, 1, false));
+            }
+            llvm::BranchInst::Create(bmerge, context.currentBlock());
+            context.popBlock();
+            context.pushBlock(bmerge);
+            context.blocks.top()->function = currentFuction;
+
+            return tmp; // not finished
+        }
         case T_NAME_ARGS:
             return funcGen(context, name, argsList);
+        case T_MINUS_FACTOR: {
+            auto val_2 = factor->codeGen(context);
+            if (val_2->getType() == Type::getDoubleTy(MyContext)) {
+                return BinaryOperator::Create(Instruction::FSub, ConstantFP::get(MyContext, llvm::APFloat(0.0)),
+                                              val_2, "", context.currentBlock());
+            } else
+                return BinaryOperator::Create(Instruction::Sub,
+                                              ConstantInt::get(val_2->getType(), llvm::APInt(32, 0, false)), val_2, "",
+                                              context.currentBlock());
+
+            //            auto e = new Expr(2, new Expr(new Term(new Factor(new ConstValue(0, 1)))), new Term(factor));
+        }
         case T_ID_DOT_ID:
             return new LoadInst(GetRecordRef(context, id, recordId), "", false, context.currentBlock());
         case T_ID_EXPR:
@@ -912,7 +999,7 @@ static Value *GetArrayRef(CodeGenContext &context, const std::string &id, Expres
         if (p->locals[id] == nullptr) {
             std::cout << "Uninitialize variable: " << id << std::endl;
         }
-        assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
+//        assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
         Value *ptr;
         if (context.isReferece(id)) {
             ptr = new llvm::LoadInst(p->locals[id], "", false, context.currentBlock());

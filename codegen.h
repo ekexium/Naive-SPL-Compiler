@@ -72,10 +72,31 @@ public:
         blocks.pop();
         delete top;
     }
-    CodeGenBlock * isReferece(std::string var) {
+
+    CodeGenBlock * isReferece(const std::string & var) {
         CodeGenBlock * p = blocks.top();
         while (p) {
             if(p->references.find(var)!= p->references.end())
+                return p;
+            p = p->preBlock;
+        }
+        return nullptr;
+    }
+
+    CodeGenBlock * isType(const std::string t) {
+        CodeGenBlock * p = blocks.top();
+        while (p) {
+            if(p->types.find(t)!= p->types.end())
+                return p;
+            p = p->preBlock;
+        }
+        return nullptr;
+    }
+
+    CodeGenBlock * isVariable(const std::string v) {
+        CodeGenBlock * p = blocks.top();
+        while (p) {
+            if(p->locals.find(v)!= p->locals.end())
                 return p;
             p = p->preBlock;
         }
@@ -88,7 +109,7 @@ public:
 
     std::set<std::string> &reference() { return blocks.top()->references; };
 
-    std::map<std::string, TypeDecl *> type() { return blocks.top()->types; };
+    std::map<std::string, TypeDecl *> &type() { return blocks.top()->types; };
 
     llvm::BasicBlock *currentBlock() { return blocks.top()->block; }
 

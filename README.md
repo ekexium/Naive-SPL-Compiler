@@ -3,15 +3,35 @@ A naive SPL compiler implementation in C++.
 - 目前的版本
   - 实现了writeln功能
   - 会在当前目录下生成output.s 在我的电脑下可以通过 `gcc -o test.out ./cmake-build-debug/output.s`这样的命令编译运行test.out
-- 数组的实现
-- record实现
+
+- ~~数组的实现~~
+
+- ~~record实现~~
+
 - ~~常量被重新赋值？~~
+
 - 类型检查？
+
 - ~~函数调用~~
+
 - 乘除现在有问题？加减区分一下double int？ — 乘除的问题应该大概是类型检查？
+
 - ~~Var val~~
+
 - ProcStmt 除了write的部分 — write 有bug 不管了
+
 - 变量自动赋初值
-- Factor: T_NOT_FACTOR T_MINUS_FACTOR
+
+- ~~Factor: T_NOT_FACTOR T_MINUS_FACTOR~~ 假装实现 NOT没有测试过
+
 - 倒序改正序访问
-- 调用的时候传指针，assign的时候注意（应该是所有load-store注意），创建函数时arg type改一下
+
+- ~~test4 — reference 的 reference有问题~~
+
+- ~~test5 — undefined type?~~
+
+- 枚举不写了吧
+
+  
+
+  
