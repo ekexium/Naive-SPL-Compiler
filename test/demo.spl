@@ -1,5 +1,5 @@
 program system_functions;
 
 begin
-writeln(sqr(2));
+    writeln(abs(0-2));
 end.
