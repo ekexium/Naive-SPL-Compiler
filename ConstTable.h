@@ -16,19 +16,22 @@ union ConstValueUnion {
 };
 
 class ConstTable {
-	std::map <std::string, std::stack<ConstValueUnion>> table;
+public:
+	std::map <std::string, std::pair<int, std::stack<ConstValueUnion>>> table;
 
 	int getInt(const std::string &name) {
-		return table.at(name).top().integer;
+		return table.at(name).second.top().integer;
 	}
 
 	double getReal(const std::string &name) {
-
+		return table.at(name).second.top().real;
 	}
 
 	char getChar(const std::string &name) {
-
+		return table.at(name).second.top().ch;
 	}
+
+
 };
 
 #endif //SPLC_CONSTTABLE_H
