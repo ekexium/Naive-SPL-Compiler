@@ -77,11 +77,11 @@ llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
         case ConstValue::T_SYS_CON:
             if (value == "maxint")
                 return ConstantInt::get(Type::getInt32Ty(MyContext), 2147483647, true);
-            else if(value == "false")
+            else if (value == "false")
                 return ConstantInt::get(Type::getInt1Ty(MyContext), 1, true);
-            else if(value == "true")
+            else if (value == "true")
                 return ConstantInt::get(Type::getInt1Ty(MyContext), 0, true);
-            return nullptr; // ?????????/ Array?
+            return nullptr;
         default:
             return nullptr;
     }
@@ -118,23 +118,23 @@ llvm::Value *VarDecl::codeGen(CodeGenContext &context) {
     NameList *n = nameList;
     while (n) {
         // how to get type
-        llvm::Type *t = typeDecl->getType(context);
+        llvm::Type *t = typeDecl->getType(context, "");
         if (!t) {
             std::cout << "Error: undefined type." << std::endl;
             exit(1);
-//            return nullptr;
+        } else {
+            AllocaInst *alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
+            context.local()[n->name] = alloc;
         }
-        AllocaInst *alloc = new AllocaInst(t, 0, n->name, context.currentBlock()); // 那个1是干什么的呢
-        context.local()[n->name] = alloc;
         n = n->nameList;
     }
     return nullptr;
 }
 
-llvm::Type *TypeDecl::getType(CodeGenContext &context) {
+llvm::Type *TypeDecl::getType(CodeGenContext &context, std::string name) {
     if (type == T_SIMPLE_TYPE_DECLARE) return simpleTypeDecl->getType(context);
     else if (type == T_ARRAY_TYPE_DECLARE) return arrayTypeDecl->getType(context);
-    else if (type == T_RECORD_TYPE_DECLARE) return recordTypeDecl->getType(context);
+    else if (type == T_RECORD_TYPE_DECLARE) return recordTypeDecl->getType(context, name);
     return nullptr;
 };
 
@@ -144,19 +144,20 @@ llvm::Type *SimpleTypeDecl::getType(CodeGenContext &context) {
             if (sysType == "boolean") return llvm::Type::getInt1Ty(MyContext);
             else if (sysType == "char") return llvm::Type::getInt1Ty(MyContext);
             else if (sysType == "integer") return llvm::Type::getInt32Ty(MyContext);
-            else return llvm::Type::getDoubleTy(MyContext);
+            else return nullptr;
         case T_TYPE_NAME: {
             if (name == "boolean") return llvm::Type::getInt1Ty(MyContext);
             else if (name == "char") return llvm::Type::getInt1Ty(MyContext);
             else if (name == "integer") return llvm::Type::getInt32Ty(MyContext);
-//            else return llvm::Type::getDoubleTy(MyContext);
+            if (context.module->getTypeByName(name))
+                return context.module->getTypeByName(name);
             CodeGenBlock *p = context.blocks.top();
             while (p) {
                 if (p->types.find(name) == p->types.end()) {
                     p = p->preBlock;
                     continue;
                 }
-                return p->types.at(name)->getType(context);
+                return p->types.at(name)->getType(context, name);
             }
             return nullptr;
         }
@@ -167,11 +168,27 @@ llvm::Type *SimpleTypeDecl::getType(CodeGenContext &context) {
 };
 
 llvm::Type *ArrayTypeDecl::getType(CodeGenContext &context) {
-    return nullptr;
+    return llvm::ArrayType::get(elementType->getType(context, ""), range->getRange());
 }
 
-llvm::Type *RecordTypeDecl::getType(CodeGenContext &context) {
-    return nullptr;
+llvm::Type *RecordTypeDecl::getType(CodeGenContext &context, std::string &name) {
+    if (context.module->getTypeByName(name))
+        return context.module->getTypeByName(name);
+    FieldDeclList *f = fieldDeclList;
+    std::vector<Type *> argList;
+    while (f) {
+        NameList *n = f->fieldDecl->nameList;
+        while (n) {
+            argList.push_back(f->fieldDecl->typeDecl->getType(context, ""));
+            n = n->nameList;
+        }
+        f = f->preList;
+    }
+    StructType *structType;
+    if (!name.empty()) structType = StructType::create(MyContext, makeArrayRef(argList), name);
+    else structType = StructType::create(MyContext, makeArrayRef(argList));
+//    structType->setBody(makeArrayRef(argList));
+    return structType;
 }
 
 llvm::Value *RoutinePart::codeGen(CodeGenContext &context) {
