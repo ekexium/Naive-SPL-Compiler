@@ -48,6 +48,7 @@ llvm::Value *ConstExprList::codeGen(CodeGenContext &context) {
 //	context.local()[name] = alloc;
 //	return new StoreInst(var, context.local()[name], false, context.currentBlock());
     context.local()[name] = var;
+    addToConstTable(context.constTable);
     return var;
 }
 
@@ -376,6 +377,7 @@ llvm::Value *ProcedureDecl::codeGen(CodeGenContext &context) {
 }
 
 llvm::Value *SubRoutine::codeGen(CodeGenContext &context) {
+
 	routineHead->codeGen(context);
 	routineBody->codeGen(context);
 	clearConstTable(context.constTable);
@@ -744,6 +746,7 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
                 if (p->locals[name] == nullptr) {
                     std::cout << "Uninitialize variable: " << name << std::endl;
                 }
+                if(context.constTable.isConst(name)) return p->locals[name];
                 return new llvm::LoadInst(p->locals[name], "", false, context.currentBlock()); // ??
             }
             std::cout << "Undefined variable: " << name << std::endl;

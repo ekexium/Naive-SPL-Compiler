@@ -46,7 +46,7 @@ public:
     std::stack<CodeGenBlock *> blocks;
     llvm::Module *module;
     std::map<std::string, FuncVars> funcVars;
-    ConstTable constTtable;
+    ConstTable constTable;
 
     CodeGenContext() : module(new llvm::Module("main", MyContext)), print(nullptr) {}
     ~CodeGenContext() {
