@@ -202,9 +202,9 @@
 
     #include "AST.h"
     Program *astRoot;
-
+    extern int yylineno;
     extern int yylex();
-    void yyerror(const char *s) { printf("ERROR: %s\n", s); }
+    void yyerror(const char *s) { printf("ERROR: %s\n at line:%d\n", s, yylineno); }
 
 
 /* Enabling traces.  */
