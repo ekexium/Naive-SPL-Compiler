@@ -83,7 +83,7 @@ public:
         return nullptr;
     }
 
-    CodeGenBlock * isType(const std::string t) {
+    CodeGenBlock * isType(const std::string & t) {
         CodeGenBlock * p = blocks.top();
         while (p) {
             if(p->types.find(t)!= p->types.end())
@@ -93,7 +93,7 @@ public:
         return nullptr;
     }
 
-    CodeGenBlock * isVariable(const std::string v) {
+    CodeGenBlock * isVariable(const std::string & v) {
         CodeGenBlock * p = blocks.top();
         while (p) {
             if(p->locals.find(v)!= p->locals.end())
@@ -116,8 +116,10 @@ public:
     void generateCode(Node *root, const std::string &outputFilename);
 
     void outputCode(const char *filename, bool mips);
-
+    void CreateRead();
+    void CreatePrint();
     llvm::Function *print;
+    llvm::Function *read;
 };
 
 #endif //SPLC_CODEGEN_H

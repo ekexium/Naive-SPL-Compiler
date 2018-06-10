@@ -15,6 +15,25 @@
 
 using namespace llvm;
 
+
+void CodeGenContext::CreateRead() {
+	std::vector<llvm::Type *> arg_types;
+	arg_types.push_back(llvm::Type::getInt8PtrTy(MyContext));
+	auto printf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), arg_types, true);
+	read = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("scanf"),
+										  module);
+	read->setCallingConv(llvm::CallingConv::C);
+}
+
+void CodeGenContext::CreatePrint() {
+	std::vector<llvm::Type *> printf_arg_types;
+	printf_arg_types.push_back(llvm::Type::getInt8PtrTy(MyContext));
+	auto printf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), printf_arg_types, true);
+	print = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("printf"),
+								   module);
+	print->setCallingConv(llvm::CallingConv::C);
+}
+
 void CodeGenContext::generateCode(Node *root, const std::string &outputFilename) {
 	std::cout << "Generating code...\n";
 
@@ -27,30 +46,20 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
 	llvm::BasicBlock *bblock = llvm::BasicBlock::Create(MyContext, "entry", mainFunction, nullptr);
 
 
-	// create print
-	std::vector<llvm::Type *> printf_arg_types;
-	printf_arg_types.push_back(llvm::Type::getInt8PtrTy(MyContext));
-	auto printf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), printf_arg_types, true);
-	print = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("printf"),
-								   module);
-	print->setCallingConv(llvm::CallingConv::C);
+	// create print read ord chr
+	CreatePrint();
+	CreateRead();
+	// create read
+
 
 	/* Push a new variable/block context */
 	pushBlock(bblock);
 	blocks.top()->function = mainFunction;
-	//    currentFunction = mainFunction;
-	//    for (auto label:labels){
-	//        labelBlock[label]=BasicBlock::Create(getGlobalContext(), "label", mainFunction, 0);
-	//    }
-	//    root.CodeGen(*this); /* emit bytecode for the toplevel block */
 	root->codeGen(*this);
 
 	llvm::ReturnInst::Create(MyContext, currentBlock());
 	popBlock();
-	//    llvm::Function * current = blocks.top()->function;
-	//    llvm::BasicBlock *bblock1 =llvm:: BasicBlock::Create(MyContext, "after_ret", current, nullptr);
-	//    pushBlock(bblock1);
-	//    blocks.top()->function = current;
+
 	while (!blocks.empty())
 		popBlock();
 	// popBlock();
@@ -59,10 +68,6 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
 	   to see if our program compiled properly
 	 */
 	std::cout << "Code is generated.\n";
-	//    llvm::PassManager pm;
-
-	//    pm.addPass(llvm::PassManager::createPrintModulePass(llvm::outs()));
-	//    pm.run(*module);
 
 	// write IR to stderr
 	std::cout << "code is gen~~~\n";
