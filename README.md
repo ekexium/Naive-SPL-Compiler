@@ -37,34 +37,36 @@ LLVM IR。
 
 MIPS汇编, target = mips-apple-darwin17.6.0。
 
-- ~~数组的实现~~
+## Checklist
+- [x] 数组 一维
+- [x] record实现
+- [x] 常量不可被重新赋值
+- [ ] 类型检查？
+- [x] 函数调用
+- [x] 乘除
+- [x] 加减区分 real integer
+- [x] var: call by reference
+- [x] write, writeln
+- [ ] read
+- [ ] 变量自动赋初值
+- [x] Factor: T_NOT_FACTOR T_MINUS_FACTOR
+- [ ] 倒序改正序访问
+- [ ] 主程序返回值
 
-- ~~record实现~~
+## 功能
 
-- ~~常量被重新赋值？~~
+1. SPL基本语法
+2. 可视化AST
 
-- 类型检查？
+dependency: graphviz
+```bash
+cd cmake-build-debug
+dot -Tpng -o ast.png ast.dot
+```
 
-- ~~函数调用~~
+4. 代码生成(default target和MIPS)
 
-- 乘除现在有问题？加减区分一下double int？ — 乘除的问题应该大概是类型检查？
+default target可在本机编译运行，检查正确性。
+MIPS为实验要求。
 
-- ~~Var val~~
-
-- ProcStmt 除了write的部分 — write 有bug 不管了
-
-- 变量自动赋初值
-
-- ~~Factor: T_NOT_FACTOR T_MINUS_FACTOR~~ 假装实现 NOT没有测试过
-
-- 倒序改正序访问
-
-- ~~test4 — reference 的 reference有问题~~
-
-- ~~test5 — undefined type?~~
-
-- 枚举不写了吧
-
-  
-
-  
+5. 超简单的错误提示。
