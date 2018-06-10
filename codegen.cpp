@@ -39,7 +39,7 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
 
 	/* Create the top level interpreter function to call as entry */
 	std::vector<llvm::Type *> argTypes;
-	llvm::FunctionType *ftype = llvm::FunctionType::get(llvm::Type::getVoidTy(MyContext), makeArrayRef(argTypes),
+	llvm::FunctionType *ftype = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), makeArrayRef(argTypes),
 														false);
 	// change GlobalValue::InternalLinkage into ExternalLinkage
 	llvm::Function *mainFunction = llvm::Function::Create(ftype, llvm::GlobalValue::ExternalLinkage, "main", module);
@@ -57,7 +57,7 @@ void CodeGenContext::generateCode(Node *root, const std::string &outputFilename)
 	blocks.top()->function = mainFunction;
 	root->codeGen(*this);
 
-	llvm::ReturnInst::Create(MyContext, currentBlock());
+	llvm::ReturnInst::Create(MyContext, ConstantInt::get(Type::getInt32Ty(MyContext), llvm::APInt(32, 0, false)),currentBlock());
 	popBlock();
 
 	while (!blocks.empty())

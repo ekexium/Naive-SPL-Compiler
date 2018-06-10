@@ -50,11 +50,11 @@ MIPS汇编, target = mips-apple-darwin17.6.0。
 - [x] 加减区分 real integer
 - [x] var: call by reference
 - [x] write, writeln
-- [ ] read
+- [x] read
 - [ ] 变量自动赋初值
 - [x] Factor: T_NOT_FACTOR T_MINUS_FACTOR
 - [ ] 倒序改正序访问
-- [ ] 主程序返回值
+- [x] 主程序返回值
 
 ## 功能
 
