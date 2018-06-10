@@ -115,6 +115,8 @@ public:
 
     void generateCode(Node *root, const std::string &outputFilename);
 
+    void outputCode(const char *filename, bool mips);
+
     llvm::Function *print;
 };
 

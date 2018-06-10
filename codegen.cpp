@@ -16,121 +16,128 @@
 using namespace llvm;
 
 void CodeGenContext::generateCode(Node *root, const std::string &outputFilename) {
-    std::cout << "Generating code...\n";
+	std::cout << "Generating code...\n";
 
-    /* Create the top level interpreter function to call as entry */
-    std::vector<llvm::Type *> argTypes;
-    llvm::FunctionType *ftype = llvm::FunctionType::get(llvm::Type::getVoidTy(MyContext), makeArrayRef(argTypes),
-                                                        false);
-    // change GlobalValue::InternalLinkage into ExternalLinkage
-    llvm::Function *mainFunction = llvm::Function::Create(ftype, llvm::GlobalValue::ExternalLinkage, "main", module);
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(MyContext, "entry", mainFunction, nullptr);
+	/* Create the top level interpreter function to call as entry */
+	std::vector<llvm::Type *> argTypes;
+	llvm::FunctionType *ftype = llvm::FunctionType::get(llvm::Type::getVoidTy(MyContext), makeArrayRef(argTypes),
+														false);
+	// change GlobalValue::InternalLinkage into ExternalLinkage
+	llvm::Function *mainFunction = llvm::Function::Create(ftype, llvm::GlobalValue::ExternalLinkage, "main", module);
+	llvm::BasicBlock *bblock = llvm::BasicBlock::Create(MyContext, "entry", mainFunction, nullptr);
 
 
-    // create print
-    std::vector<llvm::Type *> printf_arg_types;
-    printf_arg_types.push_back(llvm::Type::getInt8PtrTy(MyContext));
-    auto printf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), printf_arg_types, true);
-    print = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("printf"),
-                                                    module);
-    print->setCallingConv(llvm::CallingConv::C);
+	// create print
+	std::vector<llvm::Type *> printf_arg_types;
+	printf_arg_types.push_back(llvm::Type::getInt8PtrTy(MyContext));
+	auto printf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(MyContext), printf_arg_types, true);
+	print = llvm::Function::Create(printf_type, llvm::Function::ExternalLinkage, llvm::Twine("printf"),
+								   module);
+	print->setCallingConv(llvm::CallingConv::C);
 
-    /* Push a new variable/block context */
-    pushBlock(bblock);
-    blocks.top()->function = mainFunction;
-//    currentFunction = mainFunction;
-//    for (auto label:labels){
-//        labelBlock[label]=BasicBlock::Create(getGlobalContext(), "label", mainFunction, 0);
-//    }
-//    root.CodeGen(*this); /* emit bytecode for the toplevel block */
-    root->codeGen(*this);
+	/* Push a new variable/block context */
+	pushBlock(bblock);
+	blocks.top()->function = mainFunction;
+	//    currentFunction = mainFunction;
+	//    for (auto label:labels){
+	//        labelBlock[label]=BasicBlock::Create(getGlobalContext(), "label", mainFunction, 0);
+	//    }
+	//    root.CodeGen(*this); /* emit bytecode for the toplevel block */
+	root->codeGen(*this);
 
-    llvm::ReturnInst::Create(MyContext, currentBlock());
-    popBlock();
-//    llvm::Function * current = blocks.top()->function;
-//    llvm::BasicBlock *bblock1 =llvm:: BasicBlock::Create(MyContext, "after_ret", current, nullptr);
-//    pushBlock(bblock1);
-//    blocks.top()->function = current;
-    while (!blocks.empty()) popBlock();
-    // popBlock();
+	llvm::ReturnInst::Create(MyContext, currentBlock());
+	popBlock();
+	//    llvm::Function * current = blocks.top()->function;
+	//    llvm::BasicBlock *bblock1 =llvm:: BasicBlock::Create(MyContext, "after_ret", current, nullptr);
+	//    pushBlock(bblock1);
+	//    blocks.top()->function = current;
+	while (!blocks.empty())
+		popBlock();
+	// popBlock();
 
-    /* Print the bytecode in a human-readable format
-       to see if our program compiled properly
-     */
-    std::cout << "Code is generated.\n";
-//    llvm::PassManager pm;
+	/* Print the bytecode in a human-readable format
+	   to see if our program compiled properly
+	 */
+	std::cout << "Code is generated.\n";
+	//    llvm::PassManager pm;
 
-//    pm.addPass(llvm::PassManager::createPrintModulePass(llvm::outs()));
-//    pm.run(*module);
+	//    pm.addPass(llvm::PassManager::createPrintModulePass(llvm::outs()));
+	//    pm.run(*module);
 
-    // write IR to stderr
-    std::cout << "code is gen~~~\n";
-//    module->dump();
-    llvm::outs() << *module;
-    std::cout << "code is gen~!~\n";
-    std::error_code ErrInfo;
+	// write IR to stderr
+	std::cout << "code is gen~~~\n";
+	//    module->dump();
+	llvm::outs() << *module;
+	std::cout << "code is gen~!~\n";
+	std::error_code ErrInfo;
 
-    // output
-    llvm::raw_ostream *out = new llvm::raw_fd_ostream(outputFilename, ErrInfo, llvm::sys::fs::F_None);
-    *out << *module;
-//    llvm::WriteBitcodeToFile(module, *out);
-    out->flush();
-    delete out;
+	// output
+	llvm::raw_ostream *out = new llvm::raw_fd_ostream(outputFilename, ErrInfo, llvm::sys::fs::F_None);
+	*out << *module;
+	//    llvm::WriteBitcodeToFile(module, *out);
+	out->flush();
+	delete out;
 
-////生成可执行文件
-// Initialize the target registry etc.
-    InitializeAllTargetInfos();
-    InitializeAllTargets();
-    InitializeAllTargetMCs();
-    InitializeAllAsmParsers();
-    InitializeAllAsmPrinters();
+	////生成可执行文件
+	// Initialize the target registry etc.
 
-    auto TargetTriple = sys::getDefaultTargetTriple();
-//    auto TargetTriple = sys::getProcessTriple();
-//    std::string TargetTriple = "mips-apple-darwin17.6.0";
-    module->setTargetTriple(TargetTriple);
+	outputCode("output.s", false);
+	outputCode("mips.s", true);
+}
 
-    std::string Error;
-    auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+void CodeGenContext::outputCode(const char *filename, bool mips) {
+	InitializeAllTargetInfos();
+	InitializeAllTargets();
+	InitializeAllTargetMCs();
+	InitializeAllAsmParsers();
+	InitializeAllAsmPrinters();
+	std::string TargetTriple;
 
-    // Print an error and exit if we couldn't find the requested target.
-    // This generally occurs if we've forgotten to initialise the
-    // TargetRegistry or we have a bogus target triple.
-    if (!Target) {
-        errs() << Error;
-        return;
-    }
+	if (mips)
+		TargetTriple = "mips-apple-darwin17.6.0";
+	else
+		TargetTriple = sys::getDefaultTargetTriple();
+	module->setTargetTriple(TargetTriple);
 
-    auto CPU = "generic"; // mips1 for mips: llvm-as < /dev/null | llc -march=x86-64 -mattr=help
-    auto Features = "";
+	std::string Error;
+	auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
 
-    TargetOptions opt;
-    auto RM = Optional<Reloc::Model>();
-    auto TheTargetMachine =
-            Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+	if (!Target) {
+		errs() << Error;
+		return;
+	}
 
-    module->setDataLayout(TheTargetMachine->createDataLayout());
+	std::string CPU; // mips1 for mips: llvm-as < /dev/null | llc -march=x86-64 -mattr=help
+	if (mips)
+		CPU = "";
+	else
+		CPU = "generic";
+	auto Features = "";
 
-    auto Filename = "output.s";
-    std::error_code EC;
-    raw_fd_ostream dest(Filename, EC, sys::fs::F_None);
+	TargetOptions opt;
+	auto RM = Optional<Reloc::Model>();
+	auto TheTargetMachine =
+			Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
 
-    if (EC) {
-        errs() << "Could not open file: " << EC.message();
-        return;
-    }
+	module->setDataLayout(TheTargetMachine->createDataLayout());
 
-    legacy::PassManager pass;
-//    auto FileType = TargetMachine::CGFT_ObjectFile;
-    auto FileType = TargetMachine::CGFT_AssemblyFile;
-    if (TheTargetMachine->addPassesToEmitFile(pass, dest, FileType)) {
-        errs() << "TheTargetMachine can't emit a file of this type";
-        return;
-    }
+	//	auto filename = "output.s";
+	std::error_code EC;
+	raw_fd_ostream dest(filename, EC, sys::fs::F_None);
 
-    pass.run(*module);
-    dest.flush();
+	if (EC) {
+		errs() << "Could not open file: " << EC.message();
+		return;
+	}
 
-    outs() << "Wrote " << Filename << "\n";
+	legacy::PassManager pass;
+	auto FileType = TargetMachine::CGFT_AssemblyFile;
+	if (TheTargetMachine->addPassesToEmitFile(pass, dest, FileType)) {
+		errs() << "TheTargetMachine can't emit a file of this type";
+		return;
+	}
 
+	pass.run(*module);
+	dest.flush();
+	outs() << "Wrote " << filename << "\n";
 }

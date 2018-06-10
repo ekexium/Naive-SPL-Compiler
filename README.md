@@ -1,8 +1,41 @@
 # Naive-SPL-Compiler
 A naive SPL compiler implementation in C++.
-- 目前的版本
-  - 实现了writeln功能
-  - 会在当前目录下生成output.s 在我的电脑下可以通过 `gcc -o test.out ./cmake-build-debug/output.s`这样的命令编译运行test.out
+## 依赖
+  - LLVM 6.0
+  - gcc/clang
+## 编译
+### Flex & Bison
+
+```bash
+  flex -o lexer.cpp --yylineno lexer.l
+  bison -d -o parser.cpp parser.y
+```
+
+### build
+
+```bash
+cd cmake-build-debug
+make
+```
+
+## 运行
+
+`splc input.spl`
+
+## 输出
+
+- `output.ll`
+
+LLVM IR。
+
+- `output.s`
+      
+本机汇编代码。
+可以通过 `gcc -o test.out output.s`生成本机可执行文件。
+
+- `mips.s`
+
+MIPS汇编, target = mips-apple-darwin17.6.0。
 
 - ~~数组的实现~~
 
