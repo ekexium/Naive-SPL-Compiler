@@ -2,6 +2,9 @@
 A naive SPL compiler implementation in C++.
 ## 依赖
   - LLVM 6.0
+
+并相应修改CMakeLists.txt中INC_DIR和LINK_DIR
+
   - gcc/clang
 ## 编译
 ### Flex & Bison
@@ -14,13 +17,13 @@ A naive SPL compiler implementation in C++.
 ### build
 
 ```bash
-cd cmake-build-debug
+cmake .
 make
 ```
 
 ## 运行
 
-`splc input.spl`
+`./splc input.spl`
 
 ## 输出
 
@@ -60,7 +63,6 @@ MIPS汇编, target = mips-apple-darwin17.6.0。
 
 dependency: graphviz
 ```bash
-cd cmake-build-debug
 dot -Tpng -o ast.png ast.dot
 ```
 
