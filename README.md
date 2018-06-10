@@ -64,9 +64,9 @@ cd cmake-build-debug
 dot -Tpng -o ast.png ast.dot
 ```
 
-4. 代码生成(default target和MIPS)
+3. 代码生成(default target和MIPS)
 
 default target可在本机编译运行，检查正确性。
 MIPS为实验要求。
 
-5. 超简单的错误提示。
+4. 超简单的错误提示。
