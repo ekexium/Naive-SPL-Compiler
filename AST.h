@@ -1313,7 +1313,7 @@ public:
             name = st;
         else {
             //			sysFunction = st;
-            if (st == "succ" || st == "abs" || st == "odd" || st == "pred" || st == "sqr") {
+            if (st == "succ" || st == "abs" || st == "odd" || st == "pred" || st == "sqr" || st == "sqrt") {
                 name = st + "__";
                 this->type = T_NAME_ARGS;
             }

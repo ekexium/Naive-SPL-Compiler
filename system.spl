@@ -1,5 +1,22 @@
 program system_functions;
 
+function fabs__(x:real):real;
+begin
+    if (x > 0.0) then fabs:=0.0
+    else fabs__:=-x;
+end;
+
+function sqrt__(x:real):real;
+var
+    k: real;
+begin
+    k := 1.0;
+    while fabs__(k * k - x) > 0.0001 do
+    begin
+        k := (k + x / k) / 2.0;
+    end;
+    sqrt__ := k;
+end;
 
 function odd__(x:integer):boolean;
 begin
