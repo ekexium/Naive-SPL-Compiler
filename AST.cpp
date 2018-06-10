@@ -745,6 +745,20 @@ llvm::Value *ProcStmt::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
+TypeDecl *RecordTypeDecl::findName(const std::string & s) {
+    TypeDecl *t;
+    FieldDeclList *x = fieldDeclList;
+    while (x) {
+        auto n = x->fieldDecl->nameList;
+        while (n) {
+            if(n->name == s) return x->fieldDecl->typeDecl;
+            n = n->nameList;
+        }
+        x = x->preList;
+    }
+    return nullptr;
+}
+
 llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
     CodeGenBlock *b = context.blocks.top();
     while (b) {
@@ -761,14 +775,26 @@ llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
         if (type == T_SIMPLE) {
             if (context.isReferece(id)) {
                 auto tmp = new llvm::LoadInst(b->locals[id], "", false, context.currentBlock());
-                return new llvm::StoreInst(rhs->codeGen(context), tmp, false, context.currentBlock());
+                auto r = rhs->codeGen(context);
+                if(r->getType() != b->varTypes[id]->getType(context, "")){
+                    assert("Assign stmt error" == "left and right has different types");
+                }
+                return new llvm::StoreInst(r, tmp, false, context.currentBlock());
             }
             return new llvm::StoreInst(rhs->codeGen(context), b->locals[id], false, context.currentBlock());
         } else if (type == T_ARRAY) {
-            return new llvm::StoreInst(rhs->codeGen(context), GetArrayRef(context, id, index), false,
+            auto r = rhs->codeGen(context);
+            if(r->getType() != b->varTypes[id]->arrayTypeDecl->elementType->getType(context, "")){
+                assert("Assign stmt error" == "left and right has different types");
+            }
+            return new llvm::StoreInst(r, GetArrayRef(context, id, index), false,
                                        context.currentBlock());
         } else {
-            return new StoreInst(rhs->codeGen(context), GetRecordRef(context, id, recordId), false,
+            auto r = rhs->codeGen(context);
+            if(r->getType() != b->varTypes[id]->recordTypeDecl->findName(id)->getType(context, "")){
+                assert("Assign stmt error" == "left and right has different types");
+            }
+            return new StoreInst(r, GetRecordRef(context, id, recordId), false,
                                  context.currentBlock());
         }
     }
@@ -787,13 +813,13 @@ llvm::Value *CaseStmt::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
-llvm::Value *CaseExprList::codeGen(CodeGenContext &context, Value *condition, BasicBlock * bmerge) {
+llvm::Value *CaseExprList::codeGen(CodeGenContext &context, Value *condition, BasicBlock *bmerge) {
     if (preList) preList->codeGen(context, condition, bmerge);
     if (caseExpr) return caseExpr->codeGen(context, condition, bmerge);
     return nullptr;
 }
 
-llvm::Value *CaseExpr::codeGen(CodeGenContext &context, Value *condition, BasicBlock * bmerge) {
+llvm::Value *CaseExpr::codeGen(CodeGenContext &context, Value *condition, BasicBlock *bmerge) {
     Function *currentFuction = context.blocks.top()->function;
     BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", currentFuction);
     BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", currentFuction);
@@ -903,6 +929,18 @@ llvm::Value *Expression::codeGen(CodeGenContext &context) {
     } else {
         Value *op1_val = expression->codeGen(context);
         Value *op2_val = expr->codeGen(context);
+        if (op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext)) {
+            if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+                op1_val = CastInst::Create(
+                        CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                        Type::getDoubleTy(MyContext), "", context.currentBlock());
+            }
+            if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+                op2_val = CastInst::Create(
+                        CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op2_val,
+                        Type::getDoubleTy(MyContext), "", context.currentBlock());
+            }
+        }
         switch (type) {
             case T_EQ:
                 res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
@@ -942,53 +980,32 @@ llvm::Value *Expr::codeGen(CodeGenContext &context) {
         return term->codeGen(context);
     Value *op1_val = expr->codeGen(context);
     Value *op2_val = term->codeGen(context);
+    if (op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext)) {
+        if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+            op1_val = CastInst::Create(
+                    CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                    Type::getDoubleTy(MyContext), "", context.currentBlock());
+        }
+        if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+            op2_val = CastInst::Create(
+                    CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op2_val,
+                    Type::getDoubleTy(MyContext), "", context.currentBlock());
+        }
+    }
+    assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_PLUS:
-            if (op1_val->getType() == Type::getDoubleTy(MyContext) ||
-                op2_val->getType() == Type::getDoubleTy(MyContext)) {
-                if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
-                    auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
-                    auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
-                    auto t3 = new LoadInst(t1, "", context.currentBlock());
-                    op1_val = CastInst::Create(
-                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                            Type::getDoubleTy(MyContext), "", context.currentBlock());
-                }
-                if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
-                    auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
-                    auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
-                    auto t3 = new LoadInst(t1, "", context.currentBlock());
-                    op2_val = CastInst::Create(
-                            CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                            Type::getDoubleTy(MyContext), "", context.currentBlock());
-                }
+            if (op1_val->getType() == Type::getDoubleTy(MyContext))
                 return llvm::BinaryOperator::Create(llvm::Instruction::FAdd,
                                                     op1_val, op2_val, "", context.currentBlock());
-            } else
+            else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Add,
                                                     op1_val, op2_val, "", context.currentBlock());
         case T_MINUS:
-            if (op1_val->getType() == Type::getDoubleTy(MyContext) ||
-                op2_val->getType() == Type::getDoubleTy(MyContext)) {
-                if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
-                    auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
-                    auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
-                    auto t3 = new LoadInst(t1, "", context.currentBlock());
-                    op1_val = CastInst::Create(
-                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                            Type::getDoubleTy(MyContext), "", context.currentBlock());
-                }
-                if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
-                    auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
-                    auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
-                    auto t3 = new LoadInst(t1, "", context.currentBlock());
-                    op2_val = CastInst::Create(
-                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                            Type::getDoubleTy(MyContext), "", context.currentBlock());
-                }
+            if (op1_val->getType() == Type::getDoubleTy(MyContext))
                 return llvm::BinaryOperator::Create(llvm::Instruction::FSub,
                                                     op1_val, op2_val, "", context.currentBlock());
-            } else
+            else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Sub,
                                                     op1_val, op2_val, "", context.currentBlock());
         case T_OR:
@@ -1006,32 +1023,25 @@ llvm::Value *Term::codeGen(CodeGenContext &context) {
         return factor->codeGen(context);
     Value *op1_val = term->codeGen(context);
     Value *op2_val = factor->codeGen(context);
-//    assert(op1_val->getType() == op2_val->getType());
-        if(op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext)) {
-            if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
-                auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
-                auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
-                auto t3 = new LoadInst(t1, "", context.currentBlock());
-                op1_val = CastInst::Create(
-                        CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                        Type::getDoubleTy(MyContext), "", context.currentBlock());
-            }
-            if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
-                auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
-                auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
-                auto t3 = new LoadInst(t1, "", context.currentBlock());
-                op2_val = CastInst::Create(
-                        CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op1_val,
-                        Type::getDoubleTy(MyContext), "", context.currentBlock());
-            }
+    if (op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext)) {
+        if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+            op1_val = CastInst::Create(
+                    CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                    Type::getDoubleTy(MyContext), "", context.currentBlock());
         }
+        if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+            op2_val = CastInst::Create(
+                    CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op2_val,
+                    Type::getDoubleTy(MyContext), "", context.currentBlock());
+        }
+    }
+    assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_MUL:
             if (op1_val->getType() == Type::getDoubleTy(MyContext)) {
                 return llvm::BinaryOperator::Create(llvm::Instruction::FMul,
                                                     op1_val, op2_val, "", context.currentBlock());
-            }
-            else
+            } else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Mul,
                                                     op1_val, op2_val, "", context.currentBlock());
         case T_DIV:

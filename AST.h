@@ -456,6 +456,7 @@ public:
         return ch;
     }
 
+    TypeDecl *findName(const std::string & s);
 };
 
 class FieldDeclList : public AbstractStatement {
@@ -1120,7 +1121,8 @@ public:
         ch.emplace_back(caseExpr);
         return ch;
     }
-    llvm::Value *codeGen(CodeGenContext &context, llvm::Value * condition, llvm::BasicBlock * bmerge);
+
+    llvm::Value *codeGen(CodeGenContext &context, llvm::Value *condition, llvm::BasicBlock *bmerge);
 
 };
 
@@ -1150,7 +1152,7 @@ public:
         return id.empty() ? "" : id;
     }
 
-    llvm::Value *codeGen(CodeGenContext &context, llvm::Value * condition, llvm::BasicBlock * bmerge);
+    llvm::Value *codeGen(CodeGenContext &context, llvm::Value *condition, llvm::BasicBlock *bmerge);
 
 };
 

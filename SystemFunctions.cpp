@@ -11,7 +11,7 @@ extern Program *astRoot;
 
 const int NUM_SYSTEM_FUNCTIONS = 7;
 
-const std::string systemFunctionFile = "system.spl";
+const std::string systemFunctionFile = "../system.spl";
 
 RoutinePart *newRoutinePartAST(const std::string &filePath) {
 	yyin = fopen((filePath).c_str(), "r");
