@@ -1,5 +1,15 @@
 program system_functions;
 
+function pred__(x:char):char;
+begin
+    pred__ := chr(ord(x) - 1);
+end;
+
+function succ__(x:char):char;
+begin
+    succ__ := chr(ord(x) + 1);
+end;
+
 function fabs__(x:real):real;
 begin
     if (x > 0.0) then fabs:=0.0
@@ -11,7 +21,7 @@ var
     k: real;
 begin
     k := 1.0;
-    while fabs__(k * k - x) > 0.0001 do
+    while fabs__(k * k - x) > 0.001 do
     begin
         k := (k + x / k) / 2.0;
     end;

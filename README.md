@@ -6,6 +6,8 @@ A naive SPL compiler implementation in C++.
 并相应修改CMakeLists.txt中INC_DIR和LINK_DIR
 
   - gcc/clang
+  - CMake
+
 ## 编译
 ### Flex & Bison
 
@@ -24,6 +26,7 @@ make
 ## 运行
 
 `./splc input.spl`
+**splc和system.spl必须在同一目录下**
 
 ## 输出
 
@@ -44,7 +47,7 @@ MIPS汇编, target = mips-apple-darwin17.6.0。
 - [x] 数组 一维
 - [x] record实现
 - [x] 常量不可被重新赋值
-- [ ] 类型检查？
+- [x] 类型检查
 - [x] 函数调用
 - [x] 乘除
 - [x] 加减区分 real integer
@@ -53,7 +56,7 @@ MIPS汇编, target = mips-apple-darwin17.6.0。
 - [x] read
 - [ ] 变量自动赋初值
 - [x] Factor: T_NOT_FACTOR T_MINUS_FACTOR
-- [ ] 倒序改正序访问
+- [x] 倒序访问是否有问题
 - [x] 主程序返回值
 
 ## 功能
