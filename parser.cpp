@@ -2317,17 +2317,17 @@ yyreduce:
 
   case 112:
 #line 267 "parser.y"
-    {(yyval.term) = new Term(Term::T_MUL, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
+    {(yyval.term) = new Term(Term::T_DIV, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
     break;
 
   case 113:
 #line 268 "parser.y"
-    {(yyval.term) = new Term(Term::T_MUL, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
+    {(yyval.term) = new Term(Term::T_MOD, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
     break;
 
   case 114:
 #line 269 "parser.y"
-    {(yyval.term) = new Term(Term::T_MUL, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
+    {(yyval.term) = new Term(Term::T_AND, (yyvsp[(1) - (3)].term), (yyvsp[(3) - (3)].factor));;}
     break;
 
   case 115:

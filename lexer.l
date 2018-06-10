@@ -33,7 +33,6 @@
 "<"  return TOKEN(N_LT);
 "="  return TOKEN(EQ);
 ":="  return TOKEN(ASSIGN);
-"MOD"  return TOKEN(MOD);
 "%" return TOKEN(MOD);
 ".."  return TOKEN(DOTDOT);
 ";"  return TOKEN(SEMI);

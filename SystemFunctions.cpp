@@ -11,22 +11,21 @@ extern Program *astRoot;
 
 const int NUM_SYSTEM_FUNCTIONS = 7;
 
-//const std::string systemFunctionFile = "/Users/qzq/code/compiler/splc/test/system.spl";
+const std::string systemFunctionFile = "system.spl";
 
 RoutinePart *newRoutinePartAST(const std::string &filePath) {
-//	yyin = fopen((filePath).c_str(), "r");
-//	yyparse();
-//	return astRoot->routine->routineHead->routinePart;
-	return nullptr;
+	yyin = fopen((filePath).c_str(), "r");
+	yyparse();
+	return astRoot->routine->routineHead->routinePart;
 }
 
 void installSystemFunctions(Program *root) {
-//	auto routinePart = root->routine->routineHead->routinePart;
-//	while (routinePart->routinePart)
-//		routinePart = routinePart->routinePart;
-//	std::cout << routinePart << std::endl;
-//	if (routinePart)
-//		routinePart->routinePart = newRoutinePartAST(systemFunctionFile);
-//	else
-//		root->routine->routineHead->routinePart = newRoutinePartAST(systemFunctionFile);
+	auto routinePart = root->routine->routineHead->routinePart;
+	while (routinePart->routinePart)
+		routinePart = routinePart->routinePart;
+	std::cout << routinePart << std::endl;
+	if (routinePart)
+		routinePart->routinePart = newRoutinePartAST(systemFunctionFile);
+	else
+		root->routine->routineHead->routinePart = newRoutinePartAST(systemFunctionFile);
 }

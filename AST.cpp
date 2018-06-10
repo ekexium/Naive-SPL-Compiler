@@ -802,6 +802,10 @@ llvm::Value *Expr::codeGen(CodeGenContext &context) {
         return term->codeGen(context);
     Value *op1_val = expr->codeGen(context);
     Value *op2_val = term->codeGen(context);
+    op1_val->getType()->print(llvm::outs());
+    std::cout << std::endl;
+    op2_val->getType()->print(llvm::outs());
+    std::cout << std::endl;
     assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_PLUS:
