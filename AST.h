@@ -1102,6 +1102,9 @@ public:
         ch.emplace_back(caseExprList);
         return ch;
     }
+
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
 };
 
 class CaseExprList : public AbstractStatement {
@@ -1117,6 +1120,8 @@ public:
         ch.emplace_back(caseExpr);
         return ch;
     }
+    llvm::Value *codeGen(CodeGenContext &context, llvm::Value * condition, llvm::BasicBlock * bmerge);
+
 };
 
 class CaseExpr : public AbstractStatement {
@@ -1144,6 +1149,9 @@ public:
     std::string getInfo() override {
         return id.empty() ? "" : id;
     }
+
+    llvm::Value *codeGen(CodeGenContext &context, llvm::Value * condition, llvm::BasicBlock * bmerge);
+
 };
 
 class GotoStmt : public AbstractStatement {
@@ -1312,7 +1320,7 @@ public:
         if (type == T_NAME_ARGS)
             name = st;
         else {
-            //			sysFunction = st;
+            sysFunction = st;
             if (st == "succ" || st == "abs" || st == "odd" || st == "pred" || st == "sqr" || st == "sqrt") {
                 name = st + "__";
                 this->type = T_NAME_ARGS;

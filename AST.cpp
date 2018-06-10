@@ -13,7 +13,7 @@ static Value *GetArrayRef(CodeGenContext &context, const std::string &id, Expres
 
 static Value *GetRecordRef(CodeGenContext &context, const std::string &id, const std::string &recordId);
 
-static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string &id);
+//static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string &id);
 
 llvm::Value *Program::codeGen(CodeGenContext &context) {
     if (routine)
@@ -82,7 +82,7 @@ llvm::Value *ConstValue::codeGen(CodeGenContext &context) {
         case ConstValue::T_INTEGER:
             return ConstantInt::get(Type::getInt32Ty(MyContext), std::stoi(value), true); // unsigned???
         case ConstValue::T_CHAR:
-            return ConstantInt::get(Type::getInt8Ty(MyContext), value.at(0), true);
+            return ConstantInt::get(Type::getInt8Ty(MyContext), value.at(0), false);
         case ConstValue::T_REAL:
             return llvm::ConstantFP::get(MyContext, llvm::APFloat(std::stod(value)));
         case ConstValue::T_SYS_CON:
@@ -775,12 +775,58 @@ llvm::Value *AssignStmt::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
+llvm::Value *CaseStmt::codeGen(CodeGenContext &context) {
+    Function *currentFuction = context.blocks.top()->function;
+    Value *condition = expression->codeGen(context);
+    BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", currentFuction);
+    if (caseExprList) caseExprList->codeGen(context, condition, bmerge);
+    llvm::BranchInst::Create(bmerge, context.currentBlock());
+    context.popBlock();
+    context.pushBlock(bmerge);
+    context.blocks.top()->function = currentFuction;
+    return nullptr;
+}
+
+llvm::Value *CaseExprList::codeGen(CodeGenContext &context, Value *condition, BasicBlock * bmerge) {
+    if (preList) preList->codeGen(context, condition, bmerge);
+    if (caseExpr) return caseExpr->codeGen(context, condition, bmerge);
+    return nullptr;
+}
+
+llvm::Value *CaseExpr::codeGen(CodeGenContext &context, Value *condition, BasicBlock * bmerge) {
+    Function *currentFuction = context.blocks.top()->function;
+    BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", currentFuction);
+    BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", currentFuction);
+//    BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", currentFuction);
+    Value *cmp;
+    if (type == T_CONST) cmp = constValue->codeGen(context);
+    else {
+        if (context.isReferece(id)) {
+            cmp = new llvm::LoadInst(context.isVariable(id)->locals[id], "", false, context.currentBlock());
+            cmp = new llvm::LoadInst(cmp, "", false, context.currentBlock());
+        } else
+            cmp = new llvm::LoadInst(context.isVariable(id)->locals[id], "", false, context.currentBlock());
+    }
+    auto res = llvm::CmpInst::Create(llvm::Instruction::ICmp, llvm::CmpInst::ICMP_EQ,
+                                     cmp, condition, "", context.currentBlock());
+    llvm::Instruction *ret = llvm::BranchInst::Create(btrue, bfalse, res, context.currentBlock());
+    context.pushBlock(btrue);
+    context.blocks.top()->function = currentFuction;
+    stmt->codeGen(context);
+    llvm::BranchInst::Create(bmerge, context.currentBlock());
+    context.popBlock();
+    context.pushBlock(bfalse);
+    context.blocks.top()->function = currentFuction;
+    return nullptr;
+}
+
+
 llvm::Value *IfStmt::codeGen(CodeGenContext &context) {
     Function *currentFuction = context.blocks.top()->function;
     Value *condition = expression->codeGen(context);
-    BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", context.blocks.top()->function);
-    BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", context.blocks.top()->function);
-    BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", context.blocks.top()->function);
+    BasicBlock *btrue = BasicBlock::Create(MyContext, "thenStmt", currentFuction);
+    BasicBlock *bfalse = BasicBlock::Create(MyContext, "elseStmt", currentFuction);
+    BasicBlock *bmerge = BasicBlock::Create(MyContext, "mergeStmt", currentFuction);
     llvm::Instruction *ret = llvm::BranchInst::Create(btrue, bfalse, condition, context.currentBlock());
     context.pushBlock(btrue);
     context.blocks.top()->function = currentFuction;
@@ -896,20 +942,53 @@ llvm::Value *Expr::codeGen(CodeGenContext &context) {
         return term->codeGen(context);
     Value *op1_val = expr->codeGen(context);
     Value *op2_val = term->codeGen(context);
-//    assert(op1_val->getType() == op2_val->getType());
     switch (type) {
         case T_PLUS:
-            if (op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext))
+            if (op1_val->getType() == Type::getDoubleTy(MyContext) ||
+                op2_val->getType() == Type::getDoubleTy(MyContext)) {
+                if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+                    auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
+                    auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
+                    auto t3 = new LoadInst(t1, "", context.currentBlock());
+                    op1_val = CastInst::Create(
+                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                            Type::getDoubleTy(MyContext), "", context.currentBlock());
+                }
+                if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+                    auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
+                    auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
+                    auto t3 = new LoadInst(t1, "", context.currentBlock());
+                    op2_val = CastInst::Create(
+                            CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                            Type::getDoubleTy(MyContext), "", context.currentBlock());
+                }
                 return llvm::BinaryOperator::Create(llvm::Instruction::FAdd,
                                                     op1_val, op2_val, "", context.currentBlock());
-            else
+            } else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Add,
                                                     op1_val, op2_val, "", context.currentBlock());
         case T_MINUS:
-            if (op1_val->getType() == Type::getDoubleTy(MyContext))
+            if (op1_val->getType() == Type::getDoubleTy(MyContext) ||
+                op2_val->getType() == Type::getDoubleTy(MyContext)) {
+                if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+                    auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
+                    auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
+                    auto t3 = new LoadInst(t1, "", context.currentBlock());
+                    op1_val = CastInst::Create(
+                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                            Type::getDoubleTy(MyContext), "", context.currentBlock());
+                }
+                if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+                    auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
+                    auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
+                    auto t3 = new LoadInst(t1, "", context.currentBlock());
+                    op2_val = CastInst::Create(
+                            CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                            Type::getDoubleTy(MyContext), "", context.currentBlock());
+                }
                 return llvm::BinaryOperator::Create(llvm::Instruction::FSub,
                                                     op1_val, op2_val, "", context.currentBlock());
-            else
+            } else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Sub,
                                                     op1_val, op2_val, "", context.currentBlock());
         case T_OR:
@@ -927,12 +1006,31 @@ llvm::Value *Term::codeGen(CodeGenContext &context) {
         return factor->codeGen(context);
     Value *op1_val = term->codeGen(context);
     Value *op2_val = factor->codeGen(context);
-    assert(op1_val->getType() == op2_val->getType());
+//    assert(op1_val->getType() == op2_val->getType());
+        if(op1_val->getType() == Type::getDoubleTy(MyContext) || op2_val->getType() == Type::getDoubleTy(MyContext)) {
+            if (op1_val->getType() != Type::getDoubleTy(MyContext)) {
+                auto t1 = new AllocaInst(op1_val->getType(), 0, "", context.currentBlock());
+                auto t2 = new StoreInst(op1_val, t1, context.currentBlock());
+                auto t3 = new LoadInst(t1, "", context.currentBlock());
+                op1_val = CastInst::Create(
+                        CastInst::getCastOpcode(op1_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                        Type::getDoubleTy(MyContext), "", context.currentBlock());
+            }
+            if (op2_val->getType() != Type::getDoubleTy(MyContext)) {
+                auto t1 = new AllocaInst(op2_val->getType(), 0, "", context.currentBlock());
+                auto t2 = new StoreInst(op2_val, t1, context.currentBlock());
+                auto t3 = new LoadInst(t1, "", context.currentBlock());
+                op2_val = CastInst::Create(
+                        CastInst::getCastOpcode(op2_val, true, Type::getDoubleTy(MyContext), true), op1_val,
+                        Type::getDoubleTy(MyContext), "", context.currentBlock());
+            }
+        }
     switch (type) {
         case T_MUL:
-            if (op1_val->getType() == Type::getDoubleTy(MyContext))
+            if (op1_val->getType() == Type::getDoubleTy(MyContext)) {
                 return llvm::BinaryOperator::Create(llvm::Instruction::FMul,
                                                     op1_val, op2_val, "", context.currentBlock());
+            }
             else
                 return llvm::BinaryOperator::Create(llvm::Instruction::Mul,
                                                     op1_val, op2_val, "", context.currentBlock());
@@ -1022,7 +1120,8 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
                                               val_2, "", context.currentBlock());
             } else
                 return BinaryOperator::Create(Instruction::Sub,
-                                              ConstantInt::get(val_2->getType(), llvm::APInt(32, 0, false)), val_2, "",
+                                              ConstantInt::get(val_2->getType(), llvm::APInt(32, 0, false)), val_2,
+                                              "",
                                               context.currentBlock());
 
             //            auto e = new Expr(2, new Expr(new Term(new Factor(new ConstValue(0, 1)))), new Term(factor));
@@ -1031,13 +1130,24 @@ llvm::Value *Factor::codeGen(CodeGenContext &context) {
             return new LoadInst(GetRecordRef(context, id, recordId), "", false, context.currentBlock());
         case T_ID_EXPR:
             return new LoadInst(GetArrayRef(context, id, expression), "", false, context.currentBlock());
+        case T_SYS_FUNCT_ARGS:
+            if (sysFunction == "chr") {
+                auto intV = argsList->expression->codeGen(context);
+                return CastInst::CreateIntegerCast(intV, Type::getInt8Ty(MyContext), false, "",
+                                                   context.currentBlock());
+            } else if (sysFunction == "ord") {
+                auto chrV = argsList->expression->codeGen(context);
+                return CastInst::CreateIntegerCast(chrV, Type::getInt32Ty(MyContext), true, "",
+                                                   context.currentBlock());
+            }
+            break;
         default:
             return nullptr;
     }
     return nullptr;
 }
 
-static Value *GetRecordRef(CodeGenContext &context, const std::string & id, const std::string & recordId) {
+static Value *GetRecordRef(CodeGenContext &context, const std::string &id, const std::string &recordId) {
     auto p = context.blocks.top();
     Value *ptr;
     std::vector<llvm::Value *> idxList;
@@ -1121,36 +1231,6 @@ static Value *GetArrayRef(CodeGenContext &context, const std::string &id, Expres
     }
     return nullptr;
 }
-
-static Value *GetArrayRef(CodeGenContext &context, Value *index, const std::string &id) {
-    auto idxList = std::vector<llvm::Value *>();
-    idxList.push_back(llvm::ConstantInt::get(MyContext, llvm::APInt(32, 0, false)));
-    auto p = context.blocks.top();
-    while (p) {
-        if (p->locals.find(id) == p->locals.end()) {
-            p = p->preBlock;
-            continue;
-        }
-        if (p->locals[id] == nullptr) {
-            std::cout << "Uninitialize variable: " << id << std::endl;
-        }
-        assert(p->varTypes[id]->type == TypeDecl::T_ARRAY_TYPE_DECLARE);
-
-        auto ptr = p->locals[id]; // ??
-        Type *t = p->varTypes[id]->getType(context, id);
-        Value *lowerBound = llvm::ConstantInt::get(MyContext, llvm::APInt(32,
-                                                                          p->varTypes[id]->arrayTypeDecl->range->getLowerBound(
-                                                                                  context.constTable), false));
-        auto second = llvm::BinaryOperator::Create(llvm::Instruction::Sub, index,
-                                                   lowerBound, "", context.currentBlock());
-        idxList.push_back(second);
-        GetElementPtrInst *elePtr = GetElementPtrInst::Create(t, ptr, makeArrayRef(idxList), "",
-                                                              context.currentBlock());
-        return elePtr;
-    }
-    return nullptr;
-}
-
 
 llvm::Value *ForStmt::codeGen(CodeGenContext &context) {
     Function *currentFuction = context.blocks.top()->function;
